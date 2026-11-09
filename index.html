@@ -2,7 +2,7 @@
 <html lang="vi" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#03050A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -694,7 +694,6 @@ html{touch-action:manipulation}
     <div class="search" id="searchBar"><input id="q" placeholder="Tìm theo nội dung hoặc danh mục…" autocomplete="off"></div>
     <div class="mnav"><button data-nav="-1" aria-label="Tháng trước">‹</button><div class="box" id="calLbl"></div><button data-nav="1" aria-label="Tháng sau">›</button></div>
     <div class="cal" id="cal"></div>
-    <div id="calAdd"></div>
     <div class="card sumcard"><div class="sum3" id="calSum"></div><div class="bal" id="calBal"></div></div>
     <div id="dayList"></div>
   </section>
@@ -1421,7 +1420,6 @@ function renderCal(){
       + (v && v.chi ? '<span class="c">' + compact(v.chi) + '</span>' : '') + '</span></button>';
   }
   $('cal').innerHTML = h;
-  $('calAdd').innerHTML = S.pick ? '<button class="addday" data-addday="' + S.pick + '">' + L('Nhập khoản ngày ', 'Add an entry for ') + fmtD(S.pick).slice(0, 5) + '</button>' : '';
   var me = monthEntries(y, m), s = sums(me), tot = s.thu - s.chi;
   $('calSum').innerHTML = '<div><span>Thu nhập</span><b class="c-thu num"' + cu('c1', s.thu, 0, 1) + '>' + moneyS(s.thu) + '</b></div>'
     + '<div><span>Chi tiêu</span><b class="c-chi num"' + cu('c2', s.chi, 0, 1) + '>' + moneyS(s.chi) + '</b></div>'
@@ -2253,12 +2251,13 @@ document.addEventListener('click', function(ev){
   if (ds.addday) { addOnDay(ds.addday); return; }
   if (ds.day) {
     var tapT = Date.now();
-    if (LASTTAP.d === ds.day && tapT - LASTTAP.t < 450) { LASTTAP = {}; addOnDay(ds.day); return; }
+    if (LASTTAP.d === ds.day && tapT - LASTTAP.t < 450) { clearTimeout(LASTTAP.timer); LASTTAP = {}; addOnDay(ds.day); return; }
     LASTTAP = {d:ds.day, t:tapT};
     S.pick = ds.day; var p = ds.day.split('-');
     if (+p[1] !== S.m || +p[0] !== S.y) { S.y = +p[0]; S.m = +p[1]; }
     render();
-    var el = document.getElementById('day-' + ds.day); if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    var dk = ds.day;
+    LASTTAP.timer = setTimeout(function(){ if (LASTTAP.d !== dk) return; var el = document.getElementById('day-' + dk); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 460);
     return;
   }
   if (ds.row) { var row = +ds.row, e = S.data.entries.filter(function(x){ return x.row === row; })[0]; if (e && e.pending) { toast('Khoản này đang chờ gửi lên Google Sheet'); return; } if (e) startEdit(e); return; }
