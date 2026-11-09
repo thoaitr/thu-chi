@@ -328,6 +328,9 @@ a.link{color:var(--accent);text-decoration:none;font-weight:700}
 .cbox .row2{margin:12px 0 0}
 .cbox .row2 .ok{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));border-color:transparent}
 .cbox .note{min-height:18px;color:var(--neg)}
+.cbox .note.info{color:var(--muted)}
+.cbox .tip{font-size:13px;text-align:left;color:var(--ink);background:var(--glass2);border:1px solid var(--line2);border-radius:14px;padding:10px 12px;margin:0 0 12px}
+#toast{z-index:70}
 .pend{color:var(--warn) !important}
 @media (min-width:700px){ .catgrid{grid-template-columns:repeat(6,1fr)} .cal .d{min-height:70px} .cal .d .v{font-size:12.5px} .kpi b{font-size:24px} }
 @media (max-width:420px){ .sum3 b{font-size:15.5px} .ring,.ring svg{width:116px;height:116px} .ring .rc b{font-size:21px} .ringcard{gap:12px} }
@@ -337,7 +340,7 @@ a.link{color:var(--accent);text-decoration:none;font-weight:700}
 <body>
 <div class="bg" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
 <div class="loading" id="loading"><div><div class="spin"></div>Đang tải dữ liệu…</div></div>
-<div class="connect" id="connect" hidden><div class="card cbox"><div class="logo"><img src="icon-192.png" alt=""></div><h2>Kết nối Google Sheet</h2><p>Dán <b>mã kết nối</b> để app đọc và ghi vào file "Kế hoạch thu chi 2026". Mã nằm ở tab <b>Hướng dẫn</b> trong Google Sheet, ô "Mã kết nối app".</p><textarea id="cCode" rows="3" placeholder="TC1:…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea><div class="row2"><button id="cPaste">Dán</button><button class="ok" id="cGo">Kết nối</button></div><p class="note" id="cMsg"></p></div></div>
+<div class="connect" id="connect" hidden><div class="card cbox"><div class="logo"><img src="icon-192.png" alt=""></div><h2>Kết nối Google Sheet</h2><p>Dán <b>mã kết nối</b> để app đọc và ghi vào file "Kế hoạch thu chi 2026". Mã nằm ở tab <b>Hướng dẫn</b>, ô <b>B32</b>.</p><p class="tip" id="cTip" hidden>Bạn đang mở trong Safari. Hãy cài app trước: bấm <b>Chia sẻ</b> → <b>Thêm vào MH chính</b>, rồi mở app từ màn hình chính và dán mã ở đó (app ngoài màn hình chính không dùng chung kết nối với Safari).</p><textarea id="cCode" rows="3" placeholder="TC1:…" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea><div class="row2"><button id="cPaste">Dán</button><button class="ok" id="cGo">Kết nối</button></div><p class="note" id="cMsg"></p></div></div>
 <div class="app">
   <header class="top"><div class="bar-in">
     <div><button class="pill" id="btnCur" title="Đổi đơn vị hiển thị (S$ / VNĐ)"><b id="curLbl">S$</b> ⇄</button></div>
@@ -443,15 +446,25 @@ var $ = function(id){ return document.getElementById(id); };
 function store(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
 var CONN = null;
 function loadConn(){ try { var c = JSON.parse(localStorage.getItem('tc_conn') || 'null'); if (c && c.url && c.key) CONN = c; } catch (e) {} }
-function parseCode(code){
-  var m = String(code || '').trim().match(/^TC1[:.]([A-Za-z0-9_\-+\/=]+)$/);
-  if (!m) return null;
+function decodeTC(b){
   try {
-    var b64 = m[1].replace(/-/g, '+').replace(/_/g, '/'); while (b64.length % 4) b64 += '=';
-    var raw = atob(b64), i = raw.lastIndexOf('|');
-    if (i < 1 || raw.slice(0, 8) !== 'https://') return null;
-    return {url:raw.slice(0, i), key:raw.slice(i + 1)};
+    b = b.replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+    if (b.length % 4 === 1) return null;
+    while (b.length % 4) b += '=';
+    var raw = atob(b), i = raw.lastIndexOf('|'), url = raw.slice(0, i), key = raw.slice(i + 1);
+    if (i < 1 || !/^https:\/\/\S+$/.test(url) || !/^[\x21-\x7e]{32,}$/.test(key)) return null;
+    return {url:url, key:key};
   } catch (e) { return null; }
+}
+function parseCode(code){
+  var t = String(code || '').replace(/[​-‍⁠﻿]/g, '');
+  if (/%[0-9A-F]{2}/i.test(t)) { try { t = decodeURIComponent(t); } catch (e) {} }
+  var tries = [t, t.replace(/\s+/g, '')];
+  for (var k = 0; k < tries.length; k++) {
+    var m = tries[k].match(/TC1[:.]([A-Za-z0-9_\-+\/]+)/i), c = m && decodeTC(m[1]);
+    if (c) return c;
+  }
+  return null;
 }
 function isNetErr(err){ return !navigator.onLine || !!(err && (err.name === 'TypeError' || /Failed to fetch|NetworkError|Load failed|network/i.test(err.message || ''))); }
 function api(payload){
@@ -508,15 +521,20 @@ function applyData(d, fresh){
   }
   render();
 }
-function showConnect(msg){ $('loading').style.display = 'none'; $('connect').hidden = false; $('cMsg').textContent = msg || ''; }
+var HOWTO = 'Mở Google Sheet → tab Hướng dẫn → sao chép ô B32, rồi quay lại bấm Dán.';
+function cnote(msg, info){ var n = $('cMsg'); n.textContent = msg || ''; n.classList.toggle('info', !!info); }
+function showConnect(msg, info){ $('loading').style.display = 'none'; $('connect').hidden = false; cnote(msg, info); }
 function connectWith(code){
-  var c = parseCode(code);
-  if (!c) { $('cMsg').textContent = 'Mã không đúng dạng. Mã bắt đầu bằng "TC1:".'; return; }
-  var old = CONN; CONN = c; $('cMsg').textContent = 'Đang kiểm tra…'; $('cGo').disabled = true;
+  if ($('cGo').disabled) return;
+  var t = String(code || '').trim();
+  if (!t) { cnote('Chưa có mã. ' + HOWTO); return; }
+  var c = parseCode(t);
+  if (!c) { cnote(/TC1[:.]/i.test(t) ? 'Mã bị thiếu hoặc bị cắt. Hãy sao chép lại cả ô B32.' : 'Nội dung vừa dán không phải mã kết nối (mã bắt đầu bằng "TC1:"). ' + HOWTO); return; }
+  var old = CONN; CONN = c; cnote('Đang kiểm tra…', true); $('cGo').disabled = true;
   call('getData').then(function(d){
-    store('tc_conn', JSON.stringify(c)); $('connect').hidden = true; $('cCode').value = '';
+    store('tc_conn', JSON.stringify(c)); $('connect').hidden = true; $('cCode').value = ''; cnote('');
     applyData(d, true); toast('Đã kết nối Google Sheet');
-  }).catch(function(err){ CONN = old; $('cMsg').textContent = err.auth ? 'Mã kết nối không đúng.' : (isNetErr(err) ? 'Không có mạng, thử lại sau.' : err.message); })
+  }).catch(function(err){ CONN = old; cnote(err.auth ? 'Mã kết nối không đúng. Hãy sao chép lại ô B32 (mã có thể đã được đổi).' : (isNetErr(err) ? 'Không có mạng, thử lại sau.' : err.message)); })
     .then(function(){ $('cGo').disabled = false; });
 }
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -1139,12 +1157,16 @@ document.addEventListener('click', function(ev){
     case 'fDelete': del(); break;
     case 'mReload': reload(); break;
     case 'cGo': connectWith($('cCode').value); break;
-    case 'cPaste': if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(function(t){ $('cCode').value = t.trim(); }).catch(function(){ toast('Hãy nhấn giữ ô trống rồi chọn Dán'); }); else toast('Hãy nhấn giữ ô trống rồi chọn Dán'); break;
+    case 'cPaste':
+      var help = function(){ cnote('Chưa đọc được bộ nhớ tạm. Nhấn giữ vào ô phía trên rồi chọn Dán.', true); $('cCode').focus(); };
+      if (!(navigator.clipboard && navigator.clipboard.readText)) { help(); break; }
+      navigator.clipboard.readText().then(function(t){ t = String(t || '').trim(); if (!t) { cnote('Bộ nhớ tạm đang trống. ' + HOWTO); return; } $('cCode').value = t; connectWith(t); }).catch(help);
+      break;
     case 'mDisconnect':
       var dz = $('mDisconnect');
       if (!dz.dataset.arm) { dz.dataset.arm = '1'; dz.textContent = 'Bấm lần nữa'; setTimeout(function(){ delete dz.dataset.arm; dz.textContent = 'Ngắt kết nối'; }, 3000); break; }
       ['tc_conn', 'tc_cache', 'tc_cache_at'].forEach(function(k){ try { localStorage.removeItem(k); } catch (e) {} });
-      CONN = null; S.data = null; showConnect('Đã ngắt kết nối trên máy này.'); break;
+      CONN = null; S.data = null; showConnect('Đã ngắt kết nối trên máy này.', true); break;
     case 'mRateSave':
       var r = parseAmount($('mRate').value, 'VNĐ');
       if (!(r > 0)) { toast('Tỷ giá không hợp lệ'); break; }
@@ -1158,6 +1180,12 @@ $('fAmount').addEventListener('keydown', function(e){ if (e.key === 'Enter') sav
 $('q').addEventListener('input', function(){ S.q = this.value.trim(); renderCal(); });
 var rsz; window.addEventListener('resize', function(){ clearTimeout(rsz); rsz = setTimeout(function(){ if (S.data && (S.view === 'report')) render(); }, 200); });
 
+$('cCode').addEventListener('input', function(){ if (parseCode(this.value)) connectWith(this.value); });
+(function(){
+  var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  if (ios && !standalone) $('cTip').hidden = false;
+})();
 loadConn();
 var hashC = (location.hash.match(/[#&]c=([^&]+)/) || [])[1];
 if (hashC) { var hc = parseCode(decodeURIComponent(hashC)); if (hc) { CONN = hc; store('tc_conn', JSON.stringify(hc)); } history.replaceState(null, '', location.pathname + location.search); }
