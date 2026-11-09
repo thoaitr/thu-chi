@@ -479,6 +479,17 @@ svg.has-hov .aguide,svg.has-hov .adot{opacity:1}
 .view.stg :is(.kpis,.seg,.form,.catgrid,.cal,.sumcard,#dayList,.boxes,.atabs,.utabs,.card,.glist,.subh){animation-timing-function:var(--out3)}
 @media (prefers-reduced-transparency: reduce){
   .card,.tabbar,.kpis,.cal,.form,.glist,#dayList,.boxes .bx,.top .bar-in,.mnav .box,.utabs,.seg,.hseg,.thumb,.toast,.ctip{background:var(--glass-solid) !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important}}
+
+/* ===== v3d · donut ===== */
+.donut svg.dn{width:min(258px,100%);filter:none}
+.dn .gl{transition:opacity .35s var(--ease),transform .5s var(--spring)}
+.dn.has-sel .gl:not(.sel){opacity:.08}
+.dn .gl.sel{transform:translate(var(--dx),var(--dy))}
+.dn.has-sel .sl:not(.sel){opacity:.26}
+.dn-l{font-size:12.5px;fill:var(--muted);font-weight:600}
+.dn-v{font-weight:800;fill:var(--ink);letter-spacing:-.02em}
+.dn-p{font-size:12px;fill:var(--faint);font-weight:600}
+.view.anim .dn .dn-core{animation:afade .8s .2s both}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -646,7 +657,7 @@ var EN = {
   'Ngân sách nhập bằng S$ ở tab Kế hoạch tháng trong Google Sheet; hiển thị theo đơn vị đang chọn.':'Budgets are entered in S$ on the "Kế hoạch tháng" tab of the Google Sheet and shown in the selected currency.',
   'Để dành cả năm':'Saved this year','Tổng thu nhập cả năm':'Total income this year',
   'Chưa đặt mục tiêu. Điền ở tab Mục tiêu năm trong Google Sheet.':'No goals set. Fill them in on the "Mục tiêu năm" tab of the Google Sheet.',
-  'Còn lại:':'Left:',
+  'Còn lại:':'Left:','Danh mục khác':'Other categories',
   'Kết nối Google Sheet':'Connect Google Sheet','Dán':'Paste','mã kết nối':'the connect code',
   'để app đọc và ghi vào file "Kế hoạch thu chi 2026". Mã nằm ở tab':'so the app can read and write the "Kế hoạch thu chi 2026" file. It is on the',
   ', ô':'tab, cell','Kết nối':'Connect','Bạn đang mở trong Safari. Hãy cài app trước: bấm':'You are in Safari. Install the app first: tap',
@@ -694,6 +705,7 @@ var RULES = [
   [/^còn (\d+) ngày$/, function(m){ return m[1] + ' ' + UNIT('ngày', m[1]) + ' left'; }],
   [/^của (.+)$/, function(m){ return 'of ' + m[1]; }],
   [/^Đã vượt ngân sách (.+)$/, function(m){ return 'Over budget by ' + m[1]; }],
+  [/^(\d+) danh mục$/, function(m){ return m[1] + (m[1] === '1' ? ' category' : ' categories'); }],
   [/^Mục tiêu năm (\d{4})$/, function(m){ return m[1] + ' goals'; }],
   [/^Có (\d+) khoản trong Sổ thu chi\./, function(m){ return m[1] + ' entries in the log. Every change in the app is written straight to the Google Sheet; entries added offline are sent once you are back online.'; }],
   [/^(.+) · đã đồng bộ Google Sheet$/, function(m){ return m[1] + ' · synced with Google Sheet'; }],
@@ -764,7 +776,7 @@ function afterRender(){
   if (anim && v) drawLines(v);
   if (S.view === 'report' && S.rc) {
     var svg = document.querySelector('svg.dn');
-    if (svg) for (var i = 0; i < DNROWS.length; i++) if (DNROWS[i][0] === S.rc) { dnSelect(svg, i, true); break; }
+    if (svg) for (var i = 0; i < DNROWS.length; i++) if (DNROWS[i].rows.indexOf(S.rc) >= 0) { dnSelect(svg, i, true); break; }
   }
 }
 var THUMB = {};
@@ -863,11 +875,12 @@ function drawLines(root){
     var a = p.getAttribute('data-draw').split(','), len;
     try { len = p.getTotalLength(); } catch (e) { return; }
     if (!(len > 0)) return;
-    p.style.transition = 'none'; p.style.strokeDasharray = len + ' ' + len; p.style.strokeDashoffset = len;
+    var hide = a[3] === 'h';
+    p.style.transition = 'none'; p.style.strokeDasharray = len + ' ' + len; p.style.strokeDashoffset = len; if (hide) p.style.opacity = '0';
     p.getBoundingClientRect();
-    p.style.transition = 'stroke-dashoffset ' + a[1] + 's ' + (a[2] === 'l' ? 'linear' : 'cubic-bezier(.22,1,.36,1)') + ' ' + a[0] + 's';
-    p.style.strokeDashoffset = '0';
-    setTimeout(function(){ p.style.transition = ''; p.style.strokeDasharray = ''; p.style.strokeDashoffset = ''; }, (+a[0] + +a[1]) * 1000 + 100);
+    p.style.transition = 'stroke-dashoffset ' + a[1] + 's ' + (a[2] === 'l' ? 'linear' : 'cubic-bezier(.22,1,.36,1)') + ' ' + a[0] + 's' + (hide ? ', opacity 0s linear ' + a[0] + 's' : '');
+    p.style.strokeDashoffset = '0'; if (hide) p.style.opacity = '1';
+    setTimeout(function(){ p.style.transition = ''; p.style.strokeDasharray = ''; p.style.strokeDashoffset = ''; p.style.opacity = ''; }, (+a[0] + +a[1]) * 1000 + 100);
   });
 }
 /* chart tooltips */
@@ -911,27 +924,26 @@ function arcPath(cx, cy, r, a0, a1){
   var x0 = cx + r * Math.sin(a0), y0 = cy - r * Math.cos(a0), x1 = cx + r * Math.sin(a1), y1 = cy - r * Math.cos(a1);
   return 'M' + x0.toFixed(2) + ',' + y0.toFixed(2) + ' A' + r + ',' + r + ' 0 ' + (a1 - a0 > Math.PI ? 1 : 0) + ' 1 ' + x1.toFixed(2) + ',' + y1.toFixed(2);
 }
-function fsz(t){ return Math.max(13, Math.min(21, 21 - (String(t).length - 9) * 1.6)).toFixed(1); }
+function fsz(t){ return Math.max(15, Math.min(25, 25 - (String(t).length - 9) * 1.7)).toFixed(1); }
 function dnSelect(svg, idx, force){
   if (!svg) return;
   if (!force && idx !== null && String(idx) === svg.getAttribute('data-sel')) idx = null;
   var on = idx !== null ? DNROWS[idx] : null, tot = +svg.getAttribute('data-total');
-  [].forEach.call(svg.querySelectorAll('.sl'), function(g){ g.classList.toggle('sel', !!on && g.getAttribute('data-sl') === String(idx)); });
+  [].forEach.call(svg.querySelectorAll('.sl,.gl'), function(g){ g.classList.toggle('sel', !!on && (g.getAttribute('data-sl') || g.getAttribute('data-gl')) === String(idx)); });
   svg.classList.toggle('has-sel', !!on);
   var l = svg.querySelector('.dn-l'), v = svg.querySelector('.dn-v'), pc = svg.querySelector('.dn-p');
   v._cu = null;
   if (on) {
     svg.setAttribute('data-sel', idx);
-    l.textContent = shortName(on[0]).slice(0, 22); v.textContent = money(on[1]); v.style.fill = PIE[idx % PIE.length];
-    pc.textContent = nf1.format(tot ? on[1] / tot * 100 : 0) + ' %';
-    l.setAttribute('y', 100); v.setAttribute('y', 126); pc.setAttribute('y', 147);
+    l.textContent = on.name === '__other' ? 'Danh mục khác' : shortName(on.name).slice(0, 22);
+    v.textContent = money(on.v); v.style.fill = mixHex(on.c, '#ffffff', .25);
+    pc.textContent = nf1.format(tot ? on.v / tot * 100 : 0) + ' %';
   } else {
     svg.removeAttribute('data-sel');
-    l.textContent = svg.getAttribute('data-kind'); v.textContent = money(tot); v.style.fill = svg.getAttribute('data-kc'); pc.textContent = '';
-    l.setAttribute('y', 106); v.setAttribute('y', 132); pc.setAttribute('y', 150);
+    l.textContent = svg.getAttribute('data-kind'); v.textContent = money(tot); v.style.fill = ''; pc.textContent = svg.getAttribute('data-sub') || '';
   }
   v.style.fontSize = fsz(v.textContent) + 'px';
-  [].forEach.call(document.querySelectorAll('.rrow'), function(rw){ rw.classList.toggle('hl', !!on && rw.getAttribute('data-rc') === on[0]); });
+  [].forEach.call(document.querySelectorAll('.rrow'), function(rw){ rw.classList.toggle('hl', !!on && on.rows.indexOf(rw.getAttribute('data-rc')) >= 0); });
 }
 
 var S = {data:null, y:0, m:0, disp:'S$', view:'input', rp:'m', rk:'Chi', ra:'cat', rc:'', rt:'12m', cmp:true, pick:'', q:'',
@@ -1313,16 +1325,30 @@ function itemHtml(e, withDate){
   return '<button class="it" data-row="' + e.row + '">' + tile(e.cat) + '<div class="tx"><b>' + esc(withDate ? (e.memo || shortName(e.cat)) : e.cat) + '</b>'
     + (sub ? '<span>' + esc(withDate ? d[2] + '/' + d[1] : '(' + e.memo + ')') + '</span>' : '') + '</div><div class="am num ' + cls + '">' + money(e.amount, e.cur) + other + '</div><span class="chev">›</span></button>';
 }
+var OTHER_C = '#8E94A8';
+function dnSegs(rows, total){
+  var C = 2 * Math.PI * 92, minF = 32 / C, segs = [], other = null;
+  rows.forEach(function(r, i){
+    var f = total > 0 ? r[1] / total : 0;
+    if (f <= 0) return;
+    if (!other && segs.length < 6 && f >= minF) segs.push({name:r[0], v:r[1], f:f, c:PIE[i % PIE.length], rows:[r[0]]});
+    else { if (!other) other = {name:'__other', v:0, f:0, c:OTHER_C, rows:[]}; other.v += r[1]; other.f += f; other.rows.push(r[0]); }
+  });
+  if (other) segs.push(other);
+  return segs;
+}
 function repCategory(list){
   var by = byCat(list, S.rk), total = 0;
   Object.keys(by).forEach(function(k){ total += by[k]; });
   var rows = Object.keys(by).map(function(k){ return [k, by[k]]; }).sort(function(a, b){ return b[1] - a[1]; });
+  var segs = dnSegs(rows, total), colOf = {};
+  segs.forEach(function(sg){ sg.rows.forEach(function(n){ colOf[n] = sg.c; }); });
   var h = '<div class="utabs" id="rKind"><button data-k="Chi"' + (S.rk === 'Chi' ? ' class="on"' : '') + '>Chi tiêu</button><button data-k="Thu"' + (S.rk === 'Thu' ? ' class="on"' : '') + '>Thu nhập</button></div>';
-  h += '<div class="card"><div class="donut">' + donut(rows, total) + '</div>';
+  h += '<div class="card"><div class="donut">' + donut(segs, total, rows.length) + '</div>';
   if (!rows.length) h += '<div class="empty" style="padding:10px">Chưa có dữ liệu trong kỳ này.</div>';
   var top = rows.length ? rows[0][1] : 1;
-  rows.forEach(function(r, i){
-    var open = S.rc === r[0], col = PIE[i % PIE.length];
+  rows.forEach(function(r){
+    var open = S.rc === r[0], col = colOf[r[0]] || OTHER_C;
     h += '<button class="rrow' + (open ? ' open' : '') + '" data-rc="' + esc(r[0]) + '" style="--c:' + col + '"><div class="ic" style="background:' + col + '33">' + icon(r[0]) + '</div>'
       + '<div class="nm"><span>' + esc(r[0]) + '</span><i class="shr"><b style="width:' + (top ? r[1] / top * 100 : 0).toFixed(1) + '%"></b></i></div>'
       + '<div class="vv num">' + money(r[1]) + '<small>' + nf1.format(total ? r[1] / total * 100 : 0) + ' %</small></div><span class="chev">' + (open ? '⌄' : '›') + '</span></button>';
@@ -1345,26 +1371,45 @@ function catDetail(cat, list, col){
   if (items.length > 40) h += '<div class="note">Còn ' + (items.length - 40) + ' khoản nữa, xem ở tab Lịch.</div>';
   return h + '</div>';
 }
-function donut(rows, total){
-  var R = 88, SW = 30, kind = S.rk === 'Chi' ? 'Chi tiêu' : 'Thu nhập', kc = S.rk === 'Chi' ? 'var(--chi)' : 'var(--thu)', tv = money(total);
-  DNROWS = rows; DN++;
-  var s = '<svg class="dn" viewBox="0 0 240 240" role="img" data-total="' + total + '" data-kind="' + kind + '" data-kc="' + kc + '">'
-    + '<circle cx="120" cy="120" r="' + R + '" fill="none" style="stroke:var(--track)" stroke-width="' + SW + '"/><g class="slices">';
-  var a0 = 0, acc = 0, labels = '', gap = rows.length > 1 ? 0.014 : 0;
-  if (total > 0) rows.forEach(function(r, i){
-    var f = r[1] / total; if (f <= 0) return;
-    var span = f * 2 * Math.PI, s0 = a0 + gap / 2, s1 = Math.max(s0 + 0.002, a0 + span - gap / 2), mid = a0 + span / 2;
-    if (s1 - s0 >= 2 * Math.PI) s1 = s0 + 2 * Math.PI - 0.0005;
-    s += '<g class="sl" data-sl="' + i + '" style="--dx:' + (Math.sin(mid) * 7).toFixed(2) + 'px;--dy:' + (-Math.cos(mid) * 7).toFixed(2) + 'px">'
-      + '<path d="' + arcPath(120, 120, R, s0, s1) + '" fill="none" style="stroke:' + PIE[i % PIE.length] + '" stroke-width="' + SW + '" data-draw="' + (acc * 0.9).toFixed(3) + ',' + Math.max(0.02, f * 0.9).toFixed(3) + ',l"/></g>';
-    if (f >= 0.06) labels += '<text class="pl" x="' + (120 + Math.sin(mid) * R).toFixed(1) + '" y="' + (124 - Math.cos(mid) * R).toFixed(1) + '" text-anchor="middle">' + Math.round(f * 100) + '%</text>';
-    a0 += span; acc += f;
+function mixHex(c, w, t){
+  var a = parseInt(c.slice(1), 16), b = parseInt(w.slice(1), 16), ch = function(sh){ return Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t); };
+  return '#' + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1);
+}
+function donut(segs, total, nCats){
+  var cx = 120, cy = 120, R = 92, SW = 22, GAP = 7, cap = (SW / 2 + GAP / 2) / R, kind = S.rk === 'Chi' ? 'Chi tiêu' : 'Thu nhập', kc = S.rk === 'Chi' ? 'var(--chi)' : 'var(--thu)', tv = money(total);
+  var sub = nCats ? nCats + ' danh mục' : '';
+  DNROWS = segs; DN++;
+  var id = 'dn' + DN, P = function(a){ return [cx + R * Math.sin(a), cy - R * Math.cos(a)]; };
+  var defs = '<filter id="' + id + 'g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter>'
+    + '<radialGradient id="' + id + 'c"><stop offset="0" style="stop-color:' + kc + ';stop-opacity:.18"/><stop offset=".7" style="stop-color:' + kc + ';stop-opacity:.04"/><stop offset="1" style="stop-color:' + kc + ';stop-opacity:0"/></radialGradient>';
+  var glow = '', body = '', a0 = 0, acc = 0, single = segs.length === 1;
+  segs.forEach(function(sg, i){
+    var span = sg.f * 2 * Math.PI, mid = a0 + span / 2, s0 = a0 + cap, s1 = a0 + span - cap, dot = !single && s1 - s0 < 0.03;
+    var vars = ' style="--dx:' + (Math.sin(mid) * 6).toFixed(2) + 'px;--dy:' + (-Math.cos(mid) * 6).toFixed(2) + 'px"';
+    var light = mixHex(sg.c, '#ffffff', .4), shape, glowShape, draw = (acc * 0.85).toFixed(3) + ',' + Math.max(0.05, sg.f * 0.85).toFixed(3) + ',l,h';
+    if (dot) {
+      var q = P(mid);
+      shape = '<circle class="dot" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="' + SW / 2 + '" style="fill:' + light + ';--i:' + (8 + i) + '"/>';
+      glowShape = '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="' + SW / 2 + '" style="fill:' + sg.c + '"/>';
+    } else {
+      var d = single ? arcPath(cx, cy, R, 0, 2 * Math.PI - 0.0002) : arcPath(cx, cy, R, s0, s1);
+      var e0 = single ? [cx, cy - R] : P(s0), e1 = single ? [cx, cy + R] : P(s1);
+      defs += '<linearGradient id="' + id + 's' + i + '" gradientUnits="userSpaceOnUse" x1="' + e0[0].toFixed(1) + '" y1="' + e0[1].toFixed(1) + '" x2="' + e1[0].toFixed(1) + '" y2="' + e1[1].toFixed(1) + '">'
+        + '<stop offset="0" style="stop-color:' + light + '"/><stop offset="1" style="stop-color:' + sg.c + '"/></linearGradient>';
+      shape = '<path d="' + d + '" fill="none" stroke="url(#' + id + 's' + i + ')" stroke-width="' + SW + '" stroke-linecap="round" data-draw="' + draw + '"/>';
+      glowShape = '<path d="' + d + '" fill="none" style="stroke:' + sg.c + '" stroke-width="' + SW + '" stroke-linecap="round" data-draw="' + draw + '"/>';
+    }
+    glow += '<g class="gl" data-gl="' + i + '"' + vars + '>' + glowShape + '</g>';
+    body += '<g class="sl" data-sl="' + i + '"' + vars + '>' + shape + '</g>';
+    a0 += span; acc += sg.f;
   });
-  s += '</g>' + labels + '<circle class="dn-hole" cx="120" cy="120" r="64"/>'
-    + '<text class="dn-l" x="120" y="106" text-anchor="middle">' + kind + '</text>'
-    + '<text class="dn-v num" x="120" y="132" text-anchor="middle" style="fill:' + kc + ';font-size:' + fsz(tv) + 'px"' + cu('dn', total) + '>' + tv + '</text>'
-    + '<text class="dn-p" x="120" y="150" text-anchor="middle"></text>';
-  return s + '</svg>';
+  return '<svg class="dn" viewBox="0 0 240 240" role="img" data-total="' + total + '" data-kind="' + kind + '" data-sub="' + sub + '"><defs>' + defs + '</defs>'
+    + '<circle class="dn-core" cx="' + cx + '" cy="' + cy + '" r="' + (R - SW / 2 - 2) + '" fill="url(#' + id + 'c)"/>'
+    + '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="none" style="stroke:var(--track)" stroke-width="' + SW + '"/>'
+    + '<g filter="url(#' + id + 'g)" opacity=".55">' + glow + '</g><g class="slices">' + body + '</g>'
+    + '<text class="dn-l" x="' + cx + '" y="101" text-anchor="middle">' + kind + '</text>'
+    + '<text class="dn-v num" x="' + cx + '" y="130" text-anchor="middle" style="font-size:' + fsz(tv) + 'px"' + cu('dn', total) + '>' + tv + '</text>'
+    + '<text class="dn-p" x="' + cx + '" y="151" text-anchor="middle">' + sub + '</text></svg>';
 }
 function chartW(){ var a = document.querySelector('.app'); return Math.round(Math.min(700, Math.max(300, ((a && a.clientWidth) || 375) - 60))); }
 function axisLbl(v){ return v < 0 ? '-' + axis(-v) : axis(v); }
@@ -1651,6 +1696,13 @@ function shiftMonth(n){
   if (S.view === 'report' && S.rp === 'y') S.y += n;
   else { S.m += n; if (S.m < 1) { S.m = 12; S.y--; } if (S.m > 12) { S.m = 1; S.y++; } }
   S.pick = ''; render();
+}
+function navMonth(n){
+  var c = n > 0 ? 'a-r' : 'a-l';
+  var els = S.view === 'cal' ? [['#cal', c], ['.sumcard', c], ['#dayList', c]] : S.view === 'report' ? [['#repBody', c]] : [['#budBody', c]];
+  els.push(['#v-' + S.view + ' .mnav .box', 'a-fade']);
+  motion({anim:true, els:els});
+  shiftMonth(n);
 }
 document.addEventListener('click', function(ev){
   var tg = ev.target, sl = tg.closest && tg.closest('.dn .sl');
