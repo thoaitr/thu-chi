@@ -650,6 +650,50 @@ html{touch-action:manipulation}
   background:linear-gradient(172deg,var(--sheen) 0%,transparent 42%),var(--glass);border:1px solid var(--gborder);box-shadow:inset 0 1px 0 var(--ghi),var(--shadow);
   -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);animation:vin-up .4s var(--out3) both}
 .addday::before{content:"";width:16px;height:16px;flex:none;background:var(--cta-a);-webkit-mask:var(--ico-plus) center/contain no-repeat;mask:var(--ico-plus) center/contain no-repeat}
+
+/* ===== v9 · performance: nothing animates while idle, fewer and lighter blurs ===== */
+/* backgrounds: painted once, no moving layers */
+.bg i{animation:none !important;will-change:auto !important}
+:root:not([data-bg="spheres"]) .bg i{display:none}
+:root:not([data-bg="spheres"]) .bg{background:
+  radial-gradient(62% 42% at 6% 4%,var(--b1),transparent 72%),
+  radial-gradient(58% 44% at 102% 24%,var(--b2),transparent 72%),
+  radial-gradient(64% 40% at 10% 100%,var(--b3),transparent 72%),
+  radial-gradient(52% 38% at 100% 94%,var(--b4),transparent 72%),
+  radial-gradient(70% 34% at 30% 56%,var(--b5),transparent 72%),
+  radial-gradient(130% 85% at 50% 0%,var(--bgA),var(--bgB) 72%)}
+:root[data-bg="sunset"] .bg{background:
+  radial-gradient(62% 42% at 6% 4%,var(--b1),transparent 72%),
+  radial-gradient(58% 44% at 102% 24%,var(--b2),transparent 72%),
+  radial-gradient(95% 48% at 50% 106%,var(--b3),transparent 72%),
+  radial-gradient(52% 38% at 100% 94%,var(--b4),transparent 72%),
+  radial-gradient(70% 34% at 30% 56%,var(--b5),transparent 72%),
+  radial-gradient(130% 85% at 50% 0%,var(--bgA),var(--bgB) 72%)}
+.bg::after{mix-blend-mode:normal;opacity:calc(var(--grain,.06) * .55)}
+/* lighter blur on the big surfaces */
+.card,.top .bar-in,.mnav .box,.seg,.hseg,.cal,.form,#dayList,.glist,.kpis,.utabs,.search input,.jar{-webkit-backdrop-filter:blur(18px) saturate(140%);backdrop-filter:blur(18px) saturate(140%)}
+.tabbar{-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%)}
+.sheet{-webkit-backdrop-filter:blur(24px) saturate(150%);backdrop-filter:blur(24px) saturate(150%)}
+.alert,.ctip,.addday{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+/* no blur on small repeated pieces: solid glass instead */
+.cat,.chip,.atabs button,.row2 button,.mnav>button,.more input.f,.boxes .bx,.toast,.sheet-wrap .scrim{-webkit-backdrop-filter:none !important;backdrop-filter:none !important}
+.toast{background:var(--glass)}
+.toast.on{-webkit-backdrop-filter:blur(14px) !important;backdrop-filter:blur(14px) !important}
+.sheet-wrap .scrim{background:rgba(2,4,10,.62)}
+/* tab / content transitions: transform only (opacity on a glass container is costly and drops the blur) */
+@keyframes vin-r{from{transform:translateX(18px)}}
+@keyframes vin-l{from{transform:translateX(-18px)}}
+@keyframes vin-up{from{transform:translateY(10px)}}
+@keyframes anudge{from{transform:translateY(6px)}}
+.view.on.v-r{animation:vin-r .22s var(--out3) both}
+.view.on.v-l{animation:vin-l .22s var(--out3) both}
+.view.on.v-up{animation:vin-up .3s var(--out3) both}
+.a-r{animation:vin-r .24s var(--out3) both}
+.a-l{animation:vin-l .24s var(--out3) both}
+.a-up{animation:vin-up .26s var(--out3) both}
+.a-fade{animation:anudge .24s var(--out3) both}
+:root .view.stg :is(.kpis,.seg,.form,.catgrid,.cal,.sumcard,#dayList,.boxes,.atabs,.utabs,.card,.glist,.subh),
+.view.anim .alert,.view.anim .jar{animation:none !important}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1013,7 +1057,7 @@ function goView(v, btn){
     if (a) a.cancel();
     SWITCHING = false;
   };
-  if (RM || !cur || !cur.animate) { done(); return; }
+  done(); return;
   SWITCHING = true;
   var a = cur.animate([{opacity:1, transform:'none'}, {opacity:0, transform:'translateX(' + (ni > oi ? -14 : 14) + 'px)'}],
     {duration:140, easing:'cubic-bezier(.55,0,1,.45)', fill:'forwards'});
@@ -1583,7 +1627,7 @@ function donut(segs, total, nCats){
   return '<svg class="dn" viewBox="0 0 240 240" role="img" data-total="' + total + '" data-kind="' + kind + '" data-sub="' + sub + '"><defs>' + defs + '</defs>'
     + '<circle class="dn-core" cx="' + cx + '" cy="' + cy + '" r="' + (R - SW / 2 - 2) + '" fill="url(#' + id + 'c)"/>'
     + '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="none" style="stroke:var(--track)" stroke-width="' + SW + '"/>'
-    + '<g filter="url(#' + id + 'g)" opacity=".55">' + glow + '</g><g class="slices">' + body + '</g>'
+    + '<g opacity=".16" style="stroke-width:' + (SW + 12) + 'px">' + glow.replace(/stroke-width="\d+"/g, '') + '</g><g class="slices">' + body + '</g>'
     + '<text class="dn-l" x="' + cx + '" y="101" text-anchor="middle">' + kind + '</text>'
     + '<text class="dn-v num" x="' + cx + '" y="130" text-anchor="middle" style="font-size:' + fsz(tv) + 'px"' + cu('dn', total) + '>' + tv + '</text>'
     + '<text class="dn-p" x="' + cx + '" y="151" text-anchor="middle">' + sub + '</text></svg>';
@@ -1700,7 +1744,7 @@ function svgArea(o){
   if (o.prev) s += '<path class="lnd" d="' + smoothPath(o.prev.map(function(v, i){ return [X(i), Y(v)]; }), floorY) + '" fill="none" style="stroke:var(--muted)" stroke-width="1.8" stroke-dasharray="5 5" opacity=".75"/>';
   s += '<path class="aglow" d="' + line + '" style="stroke:' + col + '" data-draw="0.05,1.2,e"/>';
   s += '<path d="' + line + '" fill="none" style="stroke:' + col + '" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" data-draw="0.05,1.2,e"/>';
-  if (!RM && last) s += '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="5" fill="none" style="stroke:' + col + '" stroke-width="2"><animate attributeName="r" values="5;15" dur="2.2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".7;0" dur="2.2s" repeatCount="indefinite"/></circle>';
+  if (false && last) s += '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="5" fill="none" style="stroke:' + col + '" stroke-width="2"><animate attributeName="r" values="5;15" dur="2.2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".7;0" dur="2.2s" repeatCount="indefinite"/></circle>';
   if (last) s += '<circle class="dot" cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="5" style="fill:' + col + ';--i:6" stroke="#fff" stroke-width="2"/>';
   s += '<circle class="adot" cx="-99" cy="-99" r="5.5" style="fill:' + col + '"/>';
   var every = n <= 7 ? 1 : n <= 12 ? (W < 460 ? 2 : 1) : Math.ceil(n / (W < 460 ? 5 : 7));
@@ -2311,7 +2355,7 @@ function glintAt(ev){
   var r = g.getBoundingClientRect();
   g.style.setProperty('--gx', (ev.clientX - r.left).toFixed(0) + 'px'); g.style.setProperty('--gy', (ev.clientY - r.top).toFixed(0) + 'px');
 }
-if (!RM) {
+if (!RM && window.matchMedia && matchMedia('(hover: hover) and (pointer: fine)').matches) {
   document.addEventListener('pointermove', function(ev){ if (glintT) return; glintT = requestAnimationFrame(function(){ glintT = 0; glintAt(ev); }); }, {passive:true});
   document.addEventListener('pointerdown', glintAt, {passive:true});
   document.addEventListener('pointerup', function(ev){ if (ev.pointerType !== 'mouse') setTimeout(function(){ if (glintEl) { glintEl.style.removeProperty('--gx'); glintEl.style.removeProperty('--gy'); glintEl = null; } }, 450); }, {passive:true});

@@ -1,5 +1,5 @@
 /* Thu chi service worker: app shell offline; API calls (POST) always go to the network. */
-const CACHE = 'thuchi-v9';
+const CACHE = 'thuchi-v10';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS.map((u) => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting()));
