@@ -623,6 +623,33 @@ a.primary{text-decoration:none}
 .bgpick button.on{color:var(--ink)}
 .bgpick button.on i{box-shadow:0 0 0 2px var(--base2),0 0 0 4px var(--accent),0 10px 24px -6px color-mix(in srgb,var(--accent) 70%,transparent);transform:translateY(-2px)}
 .set.col{flex-direction:column;align-items:stretch;gap:10px}
+
+/* ===== v6 · action colour per background + save button ===== */
+:root{--cta-a:#4F8DFF;--cta-b:#7A5CFF;
+  --cta:linear-gradient(180deg,rgba(255,255,255,.24) 0%,rgba(255,255,255,0) 58%),linear-gradient(135deg,var(--cta-a) 0%,var(--cta-b) 100%);
+  --cta-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 10px rgba(20,24,60,.22),0 12px 28px -12px color-mix(in srgb,var(--cta-b) 88%,transparent);
+  --ico-plus:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M12 5v14M5 12h14'/%3E%3C/svg%3E");--ico-check:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E")}
+:root[data-bg="aurora"]{--cta-a:#14B8A6;--cta-b:#6366F1}
+:root[data-bg="sunset"]{--cta-a:#DB2777;--cta-b:#EA580C}
+:root[data-bg="ocean"]{--cta-a:#0891B2;--cta-b:#2563EB}
+#v-input #fSave{position:sticky;bottom:calc(102px + env(safe-area-inset-bottom));z-index:5;display:flex;align-items:center;justify-content:center;gap:9px;
+  width:auto;min-width:min(290px,calc(100% - 56px));max-width:calc(100% - 24px);margin:22px auto 8px;padding:14px 26px;font-size:15.5px;font-weight:800;letter-spacing:.01em;border-radius:999px;
+  color:var(--ink);text-shadow:none;background:linear-gradient(172deg,var(--sheen) 0%,transparent 42%),var(--glass);border:1px solid var(--gborder);
+  box-shadow:inset 0 1px 0 var(--ghi),0 16px 36px -10px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
+  transition:background .4s var(--ease),color .35s,box-shadow .4s,border-color .35s,transform .42s var(--spring)}
+#v-input #fSave::before{content:"";width:18px;height:18px;flex:none;background:currentColor;opacity:.75;-webkit-mask:var(--ico-plus) center/contain no-repeat;mask:var(--ico-plus) center/contain no-repeat;transition:opacity .3s}
+#v-input #fSave.ready{color:#fff;background:var(--cta);border-color:rgba(255,255,255,.3);box-shadow:var(--cta-shadow),0 0 0 4px color-mix(in srgb,var(--cta-a) 18%,transparent);text-shadow:0 1px 1px rgba(10,20,60,.28)}
+#v-input #fSave.ready::before{opacity:1;-webkit-mask-image:var(--ico-check);mask-image:var(--ico-check)}
+#v-input #fSave[disabled]{opacity:.7}
+
+/* ===== v7 · add for a calendar day ===== */
+html{touch-action:manipulation}
+#calAdd{display:flex;justify-content:center;padding:10px 12px 0}
+#calAdd:empty{display:none}
+.addday{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;font-weight:700;font-size:14px;color:var(--ink);
+  background:linear-gradient(172deg,var(--sheen) 0%,transparent 42%),var(--glass);border:1px solid var(--gborder);box-shadow:inset 0 1px 0 var(--ghi),var(--shadow);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);animation:vin-up .4s var(--out3) both}
+.addday::before{content:"";width:16px;height:16px;flex:none;background:var(--cta-a);-webkit-mask:var(--ico-plus) center/contain no-repeat;mask:var(--ico-plus) center/contain no-repeat}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -667,6 +694,7 @@ a.primary{text-decoration:none}
     <div class="search" id="searchBar"><input id="q" placeholder="Tìm theo nội dung hoặc danh mục…" autocomplete="off"></div>
     <div class="mnav"><button data-nav="-1" aria-label="Tháng trước">‹</button><div class="box" id="calLbl"></div><button data-nav="1" aria-label="Tháng sau">›</button></div>
     <div class="cal" id="cal"></div>
+    <div id="calAdd"></div>
     <div class="card sumcard"><div class="sum3" id="calSum"></div><div class="bal" id="calBal"></div></div>
     <div id="dayList"></div>
   </section>
@@ -1307,11 +1335,18 @@ function parseAmount(str, cur){
   if (!isFinite(v)) return NaN;
   return cur === 'VNĐ' ? Math.round(v) : Math.round(v * 100) / 100;
 }
+function updateSaveState(){
+  var b = $('fSave'); if (!b) return;
+  var ready = parseAmount($('fAmount').value, S.f.cur) > 0 && !!S.f.cat[S.f.type];
+  if (ready && !b.classList.contains('ready')) setTimeout(function(){ jelly(b, .45); }, 0);
+  b.classList.toggle('ready', ready);
+}
 function hint(){
   var v = parseAmount($('fAmount').value, S.f.cur), h;
   if (v > 0) { h = '= ' + money(v, S.f.cur); if (S.f.cur !== S.disp) h += '   ≈ ' + money(conv(v, S.f.cur)); }
   else h = S.f.cur === 'VNĐ' ? 'Gõ nhanh: 45k = 45.000đ · 1,5tr = 1.500.000đ' : 'Số lẻ: 5,40 hoặc 5.40';
   $('fHint').textContent = h;
+  updateSaveState();
 }
 function resetForm(keepDate){
   S.edit = null;
@@ -1386,6 +1421,7 @@ function renderCal(){
       + (v && v.chi ? '<span class="c">' + compact(v.chi) + '</span>' : '') + '</span></button>';
   }
   $('cal').innerHTML = h;
+  $('calAdd').innerHTML = S.pick ? '<button class="addday" data-addday="' + S.pick + '">' + L('Nhập khoản ngày ', 'Add an entry for ') + fmtD(S.pick).slice(0, 5) + '</button>' : '';
   var me = monthEntries(y, m), s = sums(me), tot = s.thu - s.chi;
   $('calSum').innerHTML = '<div><span>Thu nhập</span><b class="c-thu num"' + cu('c1', s.thu, 0, 1) + '>' + moneyS(s.thu) + '</b></div>'
     + '<div><span>Chi tiêu</span><b class="c-chi num"' + cu('c2', s.chi, 0, 1) + '>' + moneyS(s.chi) + '</b></div>'
@@ -2133,6 +2169,14 @@ function notifyClick(id){
   Notification.requestPermission().then(function(){ renderNotify(); updateBadge(); toast(Notification.permission === 'granted' ? L('Đã bật số đỏ trên biểu tượng', 'Icon badge on') : L('Bạn chưa cho phép', 'Permission not granted')); });
 }
 
+var LASTTAP = {};
+function addOnDay(day){
+  if (S.edit) resetForm(true);
+  S.f.date = day;
+  goView('input', document.querySelector('#tabbar [data-v="input"]'));
+  setTimeout(function(){ var a = $('fAmount'); if (a) a.scrollIntoView({block:'center', behavior:RM ? 'auto' : 'smooth'}); }, 380);
+  toast(L('Nhập khoản cho ngày ', 'New entry for ') + fmtD(day));
+}
 /* ================= load & events ================= */
 function reload(quiet){
   if (!CONN && !window.__mockApi) { showConnect(); return Promise.resolve(); }
@@ -2206,7 +2250,11 @@ document.addEventListener('click', function(ev){
   if (ds.rc !== undefined) { S.rc = S.rc === ds.rc ? '' : ds.rc; render(); var dt = document.querySelector('.detail'); if (dt && !RM) replay(dt, 'a-up'); return; }
   if (ds.cat !== undefined) { S.f.cat[S.f.type] = ds.cat; renderForm(); jelly(document.querySelector('#fCats .cat.on'), .8); return; }
   if (ds.how !== undefined) { S.f.how = S.f.how === ds.how ? '' : ds.how; renderForm(); jelly(document.querySelector('#fHow .chip.on')); return; }
+  if (ds.addday) { addOnDay(ds.addday); return; }
   if (ds.day) {
+    var tapT = Date.now();
+    if (LASTTAP.d === ds.day && tapT - LASTTAP.t < 450) { LASTTAP = {}; addOnDay(ds.day); return; }
+    LASTTAP = {d:ds.day, t:tapT};
     S.pick = ds.day; var p = ds.day.split('-');
     if (+p[1] !== S.m || +p[0] !== S.y) { S.y = +p[0]; S.m = +p[1]; }
     render();
