@@ -870,6 +870,12 @@ html{touch-action:manipulation}
 .rxb{margin:0 -12px 4px;animation:rxin .35s var(--out3) both}
 .rxb .mnav{margin-top:0}
 @keyframes rxin{from{transform:translateY(-10px)}}
+
+/* ===== v22 · Monthly/Yearly in a slide-up sheet ===== */
+.rxs{margin:0 -12px}
+.rxs .mnav{margin:0 12px 10px}
+.rxs :is(.card,.glist,.seg,.utabs,.atabs,.boxes .bx){-webkit-backdrop-filter:none !important;backdrop-filter:none !important}
+.rxs .card,.rxs .glist{background:var(--glass2)}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1787,12 +1793,15 @@ function byCat(list, type){
   return r;
 }
 function rxSec(k){
-  var open = S.rx === k, lbl = k === 'm' ? L('Hàng tháng', 'Monthly') : L('Hàng năm', 'Yearly'), h = '<button class="rxh' + (open ? ' on' : '') + '" data-rgo="' + k + '">' + lbl + '<i>▾</i></button>';
-  if (!open) return h;
-  S.rp = k;
-  var per = k === 'm' ? '<b>' + pad(S.m) + '/' + S.y + '</b>' : '<b>' + S.y + '</b>';
-  return h + '<div class="rxb"><div class="mnav"><button data-nav="-1" aria-label="Trước">‹</button><div class="box">' + per + '</div><button data-nav="1" aria-label="Sau">›</button></div>' + repDetailHtml() + '</div>';
+  return '<button class="rxh" data-rgo="' + k + '">' + (k === 'm' ? L('Hàng tháng', 'Monthly') : L('Hàng năm', 'Yearly')) + '<i>›</i></button>';
 }
+function rxSheetHtml(){
+  S.rp = S.rx;
+  var per = S.rp === 'm' ? pad(S.m) + '/' + S.y : String(S.y);
+  return '<h2 class="sh-title">' + (S.rp === 'm' ? L('Báo cáo tháng', 'Monthly report') : L('Báo cáo năm', 'Yearly report')) + '</h2>'
+    + '<div class="rxs"><div class="mnav"><button data-nav="-1" aria-label="Trước">‹</button><div class="box"><b>' + per + '</b></div><button data-nav="1" aria-label="Sau">›</button></div>' + repDetailHtml() + '</div>';
+}
+
 function alSel(el){
   var box = el.closest('.ovm-r'); if (!box) return;
   var k = el.getAttribute('data-al'); if (box.getAttribute('data-sel') === k) k = null;
@@ -1805,6 +1814,7 @@ function alSel(el){
 function renderReport(){
   CH = {};
   $('repBody').innerHTML = ovHtml() + '<div class="rx">' + rxSec('m') + rxSec('y') + '</div>';
+  var sb = $('sheetBody'); if (S.rx && !$('sheet').hidden && sb.querySelector('.rxs')) sb.innerHTML = rxSheetHtml();
 }
 function repDetailHtml(){
   var P = periodRange(), list = inRange(P.a, P.b), s = sums(list), net = s.thu - s.chi, open = openBal(P.a);
@@ -2419,7 +2429,7 @@ function openSheet(html){
 }
 function closeSheet(){
   var w = $('sheet'); if (!w || w.hidden || w._closing) return;
-  var done = function(){ w.hidden = true; $('sheetBody').innerHTML = ''; document.documentElement.classList.remove('sheet-open'); };
+  var done = function(){ if ($('sheetBody').querySelector('.rxs')) S.rx = ''; w.hidden = true; $('sheetBody').innerHTML = ''; document.documentElement.classList.remove('sheet-open'); };
   if (RM || !w.animate) { done(); return; }
   var sh = w.querySelector('.sheet'), sc = w.querySelector('.scrim');
   var a = sh.animate([{transform:'translateY(0)'}, {transform:'translateY(100%)'}], {duration:240, easing:'cubic-bezier(.55,0,1,.45)', fill:'forwards'});
@@ -2939,7 +2949,7 @@ function shiftMonth(n){
 function navMonth(n){
   if (S.view === 'report' && !S.rx) return;
   var c = n > 0 ? 'a-r' : 'a-l';
-  var els = S.view === 'cal' ? [['#cal', c], ['.sumcard', c], ['#dayList', c]] : S.view === 'report' ? [['#repBody .rxb', c]] : [['#budBody', c]];
+  var els = S.view === 'cal' ? [['#cal', c], ['.sumcard', c], ['#dayList', c]] : S.view === 'report' ? [['#sheetBody .rxs', c]] : [['#budBody', c]];
   els.push(['#v-' + S.view + ' .mnav .box', 'a-fade']);
   motion({anim:true, els:els});
   shiftMonth(n);
@@ -2963,9 +2973,7 @@ document.addEventListener('click', function(ev){
   var b = tg.closest('button'); if (!b) return;
   var ds = b.dataset;
   if (ds.bact) { budAct(ds.bact, b); return; }
-  if (ds.rgo) { var rk = ds.rgo; S.rx = S.rx === rk ? '' : rk; if (S.rx) S.rp = S.rx; S.rc = ''; render();
-    if (S.rx) { var hb = document.querySelector('.rxh[data-rgo="' + rk + '"]'); if (hb) { var tb = (document.querySelector('.top') || {}).offsetHeight || 70; window.scrollTo({top:Math.max(0, hb.getBoundingClientRect().top + window.scrollY - tb - 8), behavior:RM ? 'auto' : 'smooth'}); } }
-    return; }
+  if (ds.rgo) { S.rx = ds.rgo; S.rp = S.rx; S.rc = ''; CH = {}; openSheet(rxSheetHtml()); return; }
   if (ds.rb) { motion({anim:true, els:[['#repBody', 'a-l']]}); S.rp = 'o'; render(); window.scrollTo(0, 0); return; }
   if (ds.gact) { goldAct(ds.gact, b); return; }
   if (b.closest('#gSide')) { goldSide(ds.gs); return; }
