@@ -694,6 +694,21 @@ html{touch-action:manipulation}
 .a-fade{animation:anudge .24s var(--out3) both}
 :root .view.stg :is(.kpis,.seg,.form,.catgrid,.cal,.sumcard,#dayList,.boxes,.atabs,.utabs,.card,.glist,.subh),
 .view.anim .alert,.view.anim .jar{animation:none !important}
+
+/* ===== v10 · budget editor ===== */
+.bud[data-bedit]{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .2s}
+.bud[data-bedit]:active{background:var(--glass2)}
+.bedit{margin-top:14px}
+.blim{display:block;margin-top:10px;font-size:12.5px;color:var(--muted)}
+.bgrp{font-size:11.5px;color:var(--muted);margin:16px 2px 4px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.bin{display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}
+.bin:last-child{border-bottom:0}
+.bin-n{flex:1;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet .bin .f{width:118px;flex:none;text-align:right;min-height:42px;padding:9px 12px;font-weight:700}
+.sheet .bin .f:focus,.sheet #bLimit:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent);outline:none}
+#bSum b{color:var(--ink)}
+#bSum.warn,#bSum.warn b{color:var(--warn)}
+.bsave{position:sticky;bottom:0;margin-top:18px}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1804,7 +1819,7 @@ function repDaily(list){
   list.forEach(function(e){ if (typeOf(e) === 'Chi') { var v = conv(e.amount, e.cur), d = +e.date.slice(8, 10); daily[d - 1] += v; wd[(fromIso(e.date).getDay() + 6) % 7] += v; } });
   var today = S.data.settings.today, isCur = today.slice(0, 7) === ym(S.y, S.m), upto = isCur ? +today.slice(8, 10) : n;
   if (ym(S.y, S.m) > today.slice(0, 7)) upto = 0;
-  var budget = 0; S.data.cats.forEach(function(c){ if (c.type === 'Chi') budget += conv(S.data.budgets[c.name] || 0, 'S$'); });
+  var budget = monthBudget();
   for (var k = 0; k < n; k++) { acc += daily[k]; cum.push(k < upto ? acc : null); pace.push(budget * (k + 1) / n); }
   var total = acc, avg = upto ? daily.slice(0, upto).reduce(function(a, b){ return a + b; }, 0) / upto : 0, maxD = 0;
   daily.forEach(function(v, i){ if (v > daily[maxD]) maxD = i; });
@@ -1841,6 +1856,9 @@ function repGroups(){
 }
 
 /* ---------- Ngân sách ---------- */
+function catBudgetSum(d){ var t = 0; d.cats.forEach(function(c){ if (c.type !== 'Thu' && c.type !== 'Tiết kiệm') t += conv(d.budgets[c.name] || 0, 'S$'); }); return t; }
+function monthLimit(d){ return +((d || S.data).settings.limit) || 0; }
+function monthBudget(d){ d = d || S.data; var lim = monthLimit(d); return lim > 0 ? conv(lim, 'S$') : catBudgetSum(d); }
 function renderBudget(){
   $('budNav').hidden = S.bt !== 'bud'; setOn('#bTab button', 'bt', S.bt);
   if (S.bt === 'jar') return renderJars();
@@ -1850,7 +1868,7 @@ function renderBudget(){
   var rows = S.data.cats.filter(function(c){ return c.type === 'Chi'; }).map(function(c){
     return {n:c.name, b:conv(S.data.budgets[c.name] || 0, 'S$'), s:spent[c.name] || 0};
   });
-  var tb = 0, ts = 0; rows.forEach(function(r){ tb += r.b; ts += r.s; });
+  var tb = monthBudget(), ts = 0, sumB = 0; rows.forEach(function(r){ sumB += r.b; ts += r.s; });
   rows.sort(function(a, b){ var ka = a.b > 0 || a.s > 0 ? 1 : 0, kb = b.b > 0 || b.s > 0 ? 1 : 0; return kb - ka || b.s - a.s || b.b - a.b; });
   var t = S.data.settings.today, key = ym(S.y, S.m), nd = lastDay(S.y, S.m);
   var daysLeft = key === t.slice(0, 7) ? nd - +t.slice(8, 10) + 1 : key > t.slice(0, 7) ? nd : 0;
@@ -1867,10 +1885,12 @@ function renderBudget(){
     + '<div><span>Còn lại</span><b class="num ' + (left < 0 ? 'c-neg' : '') + '">' + money(left) + '</b></div>'
     + '<div><span>Còn được chi/ngày</span><b class="num">' + (daysLeft && tb ? money(perDay) : '–') + '</b></div>'
     + '<div><span>Tháng trước</span><b class="num">' + money(lastM) + '</b></div></div></div>'
-    + '<span class="statchip ' + st[0] + '"><i></i>' + st[1] + '</span></div>';
+    + '<span class="statchip ' + st[0] + '"><i></i>' + st[1] + '</span>'
+    + (monthLimit() > 0 ? '<span class="blim">' + L('Giới hạn tháng ', 'Monthly limit ') + money(tb) + L(' · các danh mục cộng lại ', ' · categories add up to ') + money(sumB) + '</span>' : '')
+    + '<button class="btnsm bedit" data-bact="edit">' + L('Sửa ngân sách', 'Edit budget') + '</button></div>';
   h += '<div class="subh">Theo danh mục</div><div class="glist">';
   rows.forEach(function(r){ h += budRow(icon(r.n) + ' ' + esc(shortName(r.n)), r.b, r.s, thr, false, r.n); });
-  h += '</div><p class="note" style="padding:0 18px">Ngân sách nhập bằng S$ ở tab Kế hoạch tháng trong Google Sheet; hiển thị theo đơn vị đang chọn.</p>';
+  h += '</div><p class="note" style="padding:0 18px">' + L('Chạm vào một danh mục để sửa ngân sách. Số nhập bằng S$ và lưu thẳng vào Google Sheet.', 'Tap a category to edit its budget. Amounts are in S$ and saved straight to the Google Sheet.') + '</p>';
   var g = S.data.goals, ye = yearEntries(S.y), ys = sums(ye), items = [];
   if (g.save) items.push({n:'Để dành cả năm', got:ys.thu - ys.chi, t:conv(g.save, 'S$')});
   if (g.income) items.push({n:'Tổng thu nhập cả năm', got:ys.thu, t:conv(g.income, 'S$')});
@@ -1888,11 +1908,58 @@ function budRow(label, b, s, thr, total, full){
   var pct = b ? nf0.format(s / b * 100) + ' %' : (s ? '100 %' : '-');
   var right = has ? 'Còn lại: <b class="num ' + (left < 0 ? 'c-neg' : 'c-thu') + '">' + money(left) + '</b>' : '<span style="font-size:17px;color:var(--muted)">Chưa đặt</span>';
   var col = b ? bcol(p, thr) : 'var(--chi)';
-  return '<div class="bud' + (total ? ' total' : '') + '"' + (full ? ' title="' + esc(full) + '"' : '') + '><div class="bh"><b>' + label + '</b><span>' + right + '</span></div>'
+  return '<div class="bud' + (total ? ' total' : '') + '"' + (full ? ' title="' + esc(full) + '" data-bedit="' + esc(full) + '"' : '') + '><div class="bh"><b>' + label + '</b><span>' + right + '</span></div>'
     + '<div class="bb"><div class="bar"><div style="width:' + Math.min(100, p * 100) + '%;background:' + col + '"></div></div><span class="num">' + pct + '</span></div>'
     + '<div class="bf"><span>Ngân sách<b class="num">' + (b ? money(b) : 'Chưa đặt') + '</b></span><span>Chi tiêu<b class="num">' + (s ? money(s) : '-') + '</b></span></div></div>';
 }
 function bcol(p, thr){ return p > 1 ? 'var(--neg)' : p >= thr ? 'var(--warn)' : 'var(--ok)'; }
+
+function budForm(focus){
+  var d = S.data, lim = monthLimit(d), cats = d.cats.filter(function(c){ return c.type !== 'Thu' && c.type !== 'Tiết kiệm'; }), groups = [];
+  cats.forEach(function(c){ if (groups.indexOf(c.group) < 0) groups.push(c.group); });
+  var h = '<h2 class="sh-title">' + L('Sửa ngân sách', 'Edit budget') + '</h2>'
+    + fld(L('Giới hạn chi tiêu mỗi tháng (S$)', 'Monthly spending limit (S$)'), '<input class="f big num" id="bLimit" inputmode="decimal" autocomplete="off" value="' + (lim ? fmtIn(lim, 'S$') : '') + '" placeholder="' + L('Trống = cộng các danh mục', 'Empty = sum of categories') + '"><small id="bSum"></small>');
+  groups.forEach(function(g){
+    h += '<div class="bgrp">' + esc(g || L('Khác', 'Other')) + '</div>';
+    cats.filter(function(c){ return c.group === g; }).forEach(function(c){
+      var b = +(d.budgets[c.name] || 0);
+      h += '<label class="bin"><span class="bin-n">' + icon(c.name) + ' ' + esc(nm(c.name)) + '</span><input class="f num" data-bcat="' + esc(c.name) + '" inputmode="decimal" autocomplete="off" value="' + (b ? fmtIn(b, 'S$') : '') + '" placeholder="0"></label>';
+    });
+  });
+  h += '<button class="primary bsave" data-bact="save">' + L('Lưu ngân sách', 'Save budget') + '</button>'
+    + '<p class="note" style="margin-top:10px">' + L('Lưu vào cột vàng và ô Giới hạn ở tab Kế hoạch tháng trong Google Sheet. Áp dụng cho mọi tháng.', 'Saved to the yellow column and the Limit cell on the Kế hoạch tháng tab of the Google Sheet. Applies to every month.') + '</p>';
+  openSheet(h);
+  var ins = document.querySelectorAll('#sheetBody [data-bcat], #bLimit');
+  for (var i = 0; i < ins.length; i++) ins[i].addEventListener('input', budSum);
+  budSum();
+  if (focus) {
+    var el = document.querySelector('#sheetBody [data-bcat="' + focus.replace(/"/g, '\\"') + '"]');
+    if (el) setTimeout(function(){ el.scrollIntoView({block:'center', behavior:RM ? 'auto' : 'smooth'}); el.focus({preventScroll:true}); el.select && el.select(); }, 380);
+  }
+}
+function budSum(){
+  var t = 0, el = $('bSum'); if (!el) return;
+  document.querySelectorAll('#sheetBody [data-bcat]').forEach(function(inp){ var v = parseAmount(inp.value, 'S$'); if (v > 0) t += v; });
+  var lv = parseAmount($('bLimit').value, 'S$'), low = lv > 0 && lv < t - 0.004;
+  el.className = low ? 'warn' : '';
+  el.innerHTML = L('Các danh mục cộng lại: ', 'Categories add up to: ') + '<b class="num">' + money(t, 'S$') + '</b>'
+    + (low ? L(' · giới hạn đang thấp hơn tổng này', ' · the limit is below this total') : !(lv > 0) ? L(' · đang dùng làm ngân sách tháng', ' · used as the monthly budget') : '');
+}
+function budSave(btn){
+  var d = S.data, changed = {}, n = 0, bad = null;
+  document.querySelectorAll('#sheetBody [data-bcat]').forEach(function(inp){
+    var raw = inp.value.trim(), v = raw ? parseAmount(raw, 'S$') : 0;
+    if (!(v >= 0)) { bad = bad || inp; return; }
+    if (Math.abs(v - (+(d.budgets[inp.dataset.bcat] || 0))) > 0.004) { changed[inp.dataset.bcat] = v; n++; }
+  });
+  var lr = $('bLimit').value.trim(), lv = lr ? parseAmount(lr, 'S$') : 0;
+  if (!(lv >= 0)) bad = bad || $('bLimit');
+  if (bad) { shake(bad); bad.focus(); return; }
+  var p = {action:'budgetSave', budgets:changed};
+  if (Math.abs(lv - monthLimit(d)) > 0.004) { p.limit = lv; n++; }
+  if (!n) { closeSheet(); return; }
+  busy(btn, apiCall(p)).then(function(r){ useData(r.data); closeSheet(); updateBadge(); toast(L('Đã lưu ngân sách', 'Budget saved')); }).catch(function(){});
+}
 
 /* ---------- Khác ---------- */
 function renderMore(){
@@ -1956,7 +2023,7 @@ function computeAlerts(){
   var today = d.settings.today, y = +today.slice(0, 4), m = +today.slice(5, 7), ymNow = today.slice(0, 7), dim = lastDay(y, m), dom = +today.slice(8, 10), left = dim - dom + 1;
   var spent = {}, total = 0, todayS = 0, out = [], thr = d.settings.threshold || .8;
   monthEntries(y, m).forEach(function(e){ if (typeOf(e) !== 'Chi') return; var v = conv(e.amount, e.cur); spent[e.cat] = (spent[e.cat] || 0) + v; total += v; if (e.date === today) todayS += v; });
-  var budget = 0; d.cats.forEach(function(c){ if (c.type !== 'Thu' && c.type !== 'Tiết kiệm') budget += conv(d.budgets[c.name] || 0, 'S$'); });
+  var budget = monthBudget(d);
   (d.recur || []).forEach(function(it){
     if (!it.on || it.last >= ymNow) return;
     var day = Math.min(it.day, dim);
@@ -2249,8 +2316,11 @@ document.addEventListener('click', function(ev){
   if (tg.closest && tg.closest('.scrim')) { closeSheet(); return; }
   if (sl) { dnSelect(sl.closest('svg'), +sl.getAttribute('data-sl')); return; }
   if (tg.closest && tg.closest('svg.dn')) { dnSelect(tg.closest('svg.dn'), null); return; }
+  var be = tg.closest && !tg.closest('button') && tg.closest('[data-bedit]');
+  if (be) { budForm(be.dataset.bedit); return; }
   var b = tg.closest('button'); if (!b) return;
   var ds = b.dataset;
+  if (ds.bact) { if (ds.bact === 'edit') budForm(); else if (ds.bact === 'save') budSave(b); return; }
   if (b.closest('#tabbar')) { goView(ds.v, b); return; }
   if (b.closest('#bTab')) { var bo = ['bud', 'jar', 'rec'], o2 = bo.indexOf(S.bt), n2 = bo.indexOf(ds.bt); if (o2 !== n2) motion({anim:true, els:[['#budBody', n2 > o2 ? 'a-r' : 'a-l']]}); S.bt = ds.bt; render(); return; }
   if (ds.jar) { openJar(+ds.jar); return; }
