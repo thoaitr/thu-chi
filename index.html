@@ -742,6 +742,35 @@ html{touch-action:manipulation}
 .gchip.on{background:var(--cta);color:#fff;border-color:rgba(255,255,255,.28)}
 .dt-row.pos>b{color:var(--ok)}
 .gdash{align-self:center;color:var(--muted);font-weight:700}
+
+/* ===== v14 · gold, simplified ===== */
+.gold-hero{position:relative;overflow:hidden;text-align:center;padding:20px 16px 16px}
+.gold-hero::before{content:"";position:absolute;left:50%;top:-30%;width:120%;height:120%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(232,185,36,.22),transparent 72%);pointer-events:none}
+.gold-hero>*{position:relative}
+.gold-hero .lbl{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.gold-qty{display:flex;justify-content:center;align-items:baseline;gap:8px;margin:6px 0 16px}
+.gold-qty b{font-size:68px;font-weight:800;letter-spacing:-.04em;line-height:1;color:#E8B924;
+  background:linear-gradient(180deg,#FFF3C4 0%,#F6C944 48%,#C68A12 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.gold-qty span{font-size:22px;font-weight:800;color:#E8B924}
+.gold-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.gold-stats>div{background:var(--glass2);border:1px solid var(--line2);border-radius:16px;padding:10px 12px;text-align:left}
+.gold-stats span{display:block;font-size:12px;color:var(--muted)}
+.gold-stats b{display:block;margin-top:2px;font-size:16.5px;font-weight:800}
+.gold-mchip{margin-top:14px}
+.gl{background:var(--glass);border:1px solid var(--gborder);border-radius:22px;overflow:hidden;margin:0 12px}
+.gl-it{display:flex;align-items:center;gap:14px;width:100%;padding:12px 16px;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.gl-it:first-child{border-top:0}
+.gl-it:active{background:var(--glass2)}
+.gl-d{width:46px;flex:none;text-align:center;border-radius:13px;background:rgba(232,185,36,.14);padding:6px 0}
+.gl-d b{display:block;font-size:19px;font-weight:800;line-height:1.1;color:#E8B924}
+.gl-d span{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.gl-tx{flex:1;min-width:0}
+.gl-tx b{display:block;font-size:16.5px;font-weight:800}
+.gl-tx span{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gl-am{font-size:15.5px;font-weight:800;white-space:nowrap}
+.gl-am.in{color:var(--ok)}
+#gSide{width:100%;margin:0 0 16px}
+#gSide button{flex:1}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -2087,101 +2116,59 @@ function goldStats(){
   return G;
 }
 function goldItem(e){
-  var p = goldParts(e), q = goldQty(e), v = convTo(e.amount, e.cur, 'VNĐ'), dd = e.date.split('-'), per = q ? Math.abs(v / q) : 0;
-  return '<button class="it" data-row="' + e.row + '"><div class="ic" style="background:#E8B92433">🪙</div><div class="tx"><b>'
-    + esc((v < 0 ? L('Bán ', 'Sold ') : L('Mua ', 'Bought ')) + nf3.format(Math.abs(q)) + ' chỉ' + (p[1] ? ' · ' + p[1] : '')) + '</b><span>'
-    + esc(dd[2] + '/' + dd[1] + '/' + dd[0] + (p[2] ? ' · ' + p[2] : '')) + '</span></div><div class="am num' + (v < 0 ? ' c-thu' : '') + '">' + money(e.amount, e.cur)
-    + (per ? '<small>' + money(per, 'VNĐ') + '/chỉ</small>' : '') + '</div><span class="chev">›</span></button>';
+  var p = goldParts(e), q = goldQty(e), v = convTo(e.amount, e.cur, 'VNĐ'), dd = e.date.split('-'), cy = S.data.settings.today.slice(0, 4);
+  var what = (v < 0 ? L('Bán ', 'Sold ') : '') + (q ? nf3.format(Math.abs(q)) + ' chỉ' : L('Vàng', 'Gold'));
+  return '<button class="gl-it" data-row="' + e.row + '"><div class="gl-d"><b>' + (+dd[2]) + '</b><span>' + ML(+dd[1]) + (dd[0] !== cy ? '/' + dd[0].slice(2) : '') + '</span></div>'
+    + '<div class="gl-tx"><b>' + esc(what) + '</b><span>' + esc([p[1], p[2]].filter(Boolean).join(' · ')) + '</span></div>'
+    + '<div class="gl-am num' + (v < 0 ? ' in' : '') + '">' + (v < 0 ? '+' : '') + trieu(Math.abs(v)) + '</div></button>';
 }
 function renderGold(){
-  var d = S.data, gs = d.settings.gold || {}, G = goldStats(), t = d.settings.today, y = +t.slice(0, 4), m = +t.slice(5, 7), dom = +t.slice(8, 10), day = +gs.day || 0;
-  var h = '<div class="card"><h3>' + L('Vàng của bạn', 'Your gold') + '<small>' + G.list.length + L(' lần ghi', ' entries') + '</small></h3>'
-    + '<div class="gold-big"><b class="num">' + nf3.format(G.qty) + ' chỉ</b><span>' + (G.qty >= 10 ? '= ' + nf3.format(G.qty / 10) + L(' lượng', ' lượng (taels)') : L('1 lượng = 10 chỉ', '1 lượng (tael) = 10 chỉ')) + '</span></div>'
-    + '<div class="dt-rows">'
-    + dtRow(L('Tiền đã bỏ vào vàng', 'Money put into gold'), money(G.net, 'VNĐ'))
-    + dtRow(L('Giá mua trung bình', 'Average cost'), G.avg ? money(G.avg, 'VNĐ') + '/chỉ' : '–')
-    + dtRow(L('Giá hôm nay', 'Price today') + (gs.priceDate ? '<small>' + L('bạn nhập ngày ', 'entered on ') + fmtD(gs.priceDate) + '</small>' : ''), G.price ? money(G.price, 'VNĐ') + '/chỉ' : L('Chưa nhập', 'Not set'))
-    + (G.price && G.qty ? dtRow(L('Giá trị theo giá hôm nay', 'Value at today\'s price'), money(G.value, 'VNĐ'))
-      + dtRow(L('Lãi / lỗ so với giá mua', 'Gain / loss vs cost'), (G.pl >= 0 ? '+' : '') + money(G.pl, 'VNĐ') + (G.cost ? ' (' + (G.pl >= 0 ? '+' : '') + nf1.format(G.pl / G.cost * 100) + '%)' : ''), G.pl < 0 ? 'neg' : 'pos') : '')
-    + '</div>'
-    + '<div class="bacts"><button class="btnsm" data-gact="price">' + L('Cập nhật giá vàng', 'Update gold price') + '</button><button class="btnsm ghost" data-gact="plan">' + L('Kế hoạch & nhắc', 'Plan & reminder') + '</button></div></div>';
-  var st = G.monthBuy > 0 ? ['good', L('Đã mua ', 'Bought ') + money(G.monthBuy, 'VNĐ') + ' · ' + nf3.format(G.monthQty) + ' chỉ']
-    : day && dom >= day ? ['warn', L('Chưa ghi mua vàng tháng này', 'No purchase recorded this month')] : ['', L('Chưa mua tháng này', 'Not bought yet this month')];
-  h += '<div class="card"><h3>' + L('Tháng ', 'Month ') + m + '/' + y + (goldRange(gs) ? '<small>' + L('Kế hoạch ', 'Plan ') + goldRange(gs) + '</small>' : '') + '</h3>'
-    + '<span class="statchip ' + st[0] + '"><i></i>' + esc(st[1]) + '</span>'
-    + '<p class="note" style="margin:10px 0 0">' + (day ? L('Nhắc từ ngày ' + day + ' nếu tháng đó chưa ghi mua vàng.', 'Reminder from day ' + day + ' if no purchase is recorded that month.') : L('Chưa bật nhắc hằng tháng.', 'Monthly reminder is off.')) + '</p></div>';
-  var vals = [], labels = []; for (var k = 0; k < 12; k++) { vals.push(0); labels.push(ML(k + 1)); }
-  G.list.forEach(function(e){ if (+e.date.slice(0, 4) === y && e.amount > 0) vals[+e.date.slice(5, 7) - 1] += conv(e.amount, e.cur); });
-  if (vals.some(function(v){ return v > 0; }))
-    h += '<div class="card"><h3>' + L('Tiền mua vàng theo tháng', 'Gold bought per month') + '<small>' + y + '</small></h3><div class="chart">' + svgChart({labels:labels, bars:[{v:vals, c:'#E8B924', n:L('Mua vàng', 'Gold')}], h:170, hi:m - 1}) + '</div></div>';
-  h += '<button class="primary" data-gact="buy">＋ ' + L('Ghi mua vàng', 'Record a purchase') + '</button>'
-    + '<div class="subh">' + L('Lịch sử', 'History') + '</div>';
-  h += G.list.length ? '<div class="glist">' + G.list.slice(0, 80).map(goldItem).join('') + '</div>'
-    : '<div class="card"><p class="note" style="margin:0">' + L('Chưa có lần mua nào. Mỗi lần mua, bấm “Ghi mua vàng” và nhập số tiền, số chỉ, loại vàng. Khoản này được tính là tiết kiệm (danh mục Đầu tư), không tính vào giới hạn chi tiêu.', 'No purchases yet. Each time you buy, tap “Record a purchase” and enter the amount, quantity (chỉ) and type. It counts as savings (category Đầu tư), not spending.') + '</p></div>';
-  h += '<div class="row2"><button data-gact="sell">' + L('Ghi bán vàng', 'Record a sale') + '</button></div>';
+  var d = S.data, gs = d.settings.gold || {}, G = goldStats(), t = d.settings.today, y = +t.slice(0, 4), m = +t.slice(5, 7);
+  var h = '<div class="card gold-hero"><div class="lbl">' + L('Vàng của bạn', 'Your gold') + '</div>'
+    + '<div class="gold-qty"><b class="num">' + nf3.format(G.qty) + '</b><span>chỉ</span></div>'
+    + '<div class="gold-stats"><div><span>' + L('Đã bỏ vào', 'Put in') + '</span><b class="num">' + (G.net ? trieu(G.net) : '–') + '</b></div>'
+    + '<div><span>' + L('Giá trung bình', 'Average price') + '</span><b class="num">' + (G.avg ? trieu(G.avg) + '/chỉ' : '–') + '</b></div></div>';
+  var bought = G.monthBuy > 0, due = +gs.day > 0 && +t.slice(8, 10) >= +gs.day;
+  h += '<span class="statchip gold-mchip ' + (bought ? 'good' : due ? 'warn' : '') + '"><i></i>' + L('Tháng ', 'Month ') + m + ': ' + (bought ? nf3.format(G.monthQty) + ' chỉ · ' + trieu(G.monthBuy) : L('chưa mua', 'not bought yet')) + '</span></div>';
+  h += '<button class="primary" data-gact="buy">＋ ' + L('Ghi mua vàng', 'Record gold') + '</button>'
+    + '<div class="subh">' + L('Lịch sử', 'History') + '</div>'
+    + (G.list.length ? '<div class="gl">' + G.list.slice(0, 80).map(goldItem).join('') + '</div>' : '<p class="note" style="padding:0 18px">' + L('Chưa có giao dịch.', 'Nothing yet.') + '</p>');
   $('budBody').innerHTML = h;
 }
 function goldForm(sell){
-  var d = S.data, gs = d.settings.gold || {}, G = goldStats(), last = G.list.filter(function(e){ return e.amount > 0; })[0], lp = last ? goldParts(last) : [], places = [];
+  var d = S.data, G = goldStats(), last = G.list.filter(function(e){ return e.amount > 0; })[0], lp = last ? goldParts(last) : [], places = [];
   G.list.forEach(function(e){ var pl = goldParts(e)[2]; if (pl && places.indexOf(pl) < 0) places.push(pl); });
   GF = {sell:!!sell, kind:lp[1] && GOLD_KINDS.indexOf(lp[1]) >= 0 ? lp[1] : GOLD_KINDS[0], cur:last ? last.cur : 'VNĐ'};
-  var h = '<h2 class="sh-title">' + (sell ? L('Ghi bán vàng', 'Record a gold sale') : L('Ghi mua vàng', 'Record a gold purchase')) + '</h2>'
+  var h = '<div class="seg small" id="gSide"><button data-gs="buy">' + L('Mua', 'Buy') + '</button><button data-gs="sell">' + L('Bán', 'Sell') + '</button></div>'
     + fld(L('Ngày', 'Date'), '<input class="f" type="date" id="gDate" value="' + d.settings.today + '">')
-    + fld(sell ? L('Số tiền nhận được', 'Amount received') : L('Số tiền', 'Amount'), '<div class="mv-row"><input class="f big num" id="gAmt" inputmode="decimal" autocomplete="off" placeholder="' + (gs.min && !sell ? fmtIn(gs.min, 'VNĐ') : '0') + '"><div class="seg small" id="gCur"><button data-gc="VNĐ">VNĐ</button><button data-gc="S$">S$</button></div></div><small>' + L('Có thể gõ tắt, ví dụ 16tr', 'Shortcuts work, e.g. 16tr') + '</small>')
-    + fld(L('Số chỉ', 'Quantity (chỉ)'), '<input class="f num" id="gQty" inputmode="decimal" autocomplete="off" placeholder="' + L('Ví dụ 2 hoặc 1,5', 'e.g. 2 or 1.5') + '"><small id="gPer">1 lượng = 10 chỉ</small>')
-    + fld(L('Loại vàng', 'Type'), '<div class="chips-row" id="gKind">' + GOLD_KINDS.map(function(k){ return '<button class="gchip" data-gk="' + esc(k) + '">' + esc(k) + '</button>'; }).join('') + '</div>')
-    + fld(sell ? L('Nơi bán (không bắt buộc)', 'Where (optional)') : L('Nơi mua (không bắt buộc)', 'Where (optional)'), '<input class="f" id="gPlace" list="gPlaces" maxlength="60" autocomplete="off" value="' + esc(lp[2] || '') + '" placeholder="PNJ, DOJI, SJC, Bảo Tín…"><datalist id="gPlaces">' + places.map(function(x){ return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>')
-    + fld(L('Ghi chú (không bắt buộc)', 'Note (optional)'), '<input class="f" id="gNote" maxlength="200" autocomplete="off">')
-    + '<button class="primary" data-gact="save">' + (sell ? L('Lưu lần bán', 'Save sale') : L('Lưu lần mua', 'Save purchase')) + '</button>'
-    + '<p class="note" style="margin-top:10px">' + L('Ghi vào Sổ thu chi ở danh mục Đầu tư, có nhãn [Vàng]. Đây là tiết kiệm, không tính vào giới hạn chi tiêu.', 'Saved to the log under Đầu tư with a [Vàng] tag. It counts as savings, not spending.') + '</p>';
+    + fld(L('Số tiền', 'Amount'), '<div class="mv-row"><input class="f big num" id="gAmt" inputmode="decimal" autocomplete="off" placeholder="16tr"><div class="seg small" id="gCur"><button data-gc="VNĐ">VNĐ</button><button data-gc="S$">S$</button></div></div>')
+    + fld(L('Số chỉ', 'Quantity (chỉ)'), '<input class="f num" id="gQty" inputmode="decimal" autocomplete="off" placeholder="2"><small id="gPer"></small>')
+    + fld(L('Loại', 'Type'), '<div class="chips-row" id="gKind">' + GOLD_KINDS.map(function(k){ return '<button class="gchip" data-gk="' + esc(k) + '">' + esc(k) + '</button>'; }).join('') + '</div>')
+    + fld(L('Nơi mua', 'Where'), '<input class="f" id="gPlace" list="gPlaces" maxlength="60" autocomplete="off" value="' + esc(lp[2] || '') + '" placeholder="PNJ, DOJI, SJC…"><datalist id="gPlaces">' + places.map(function(x){ return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>')
+    + '<button class="primary" data-gact="save">' + L('Lưu', 'Save') + '</button>';
   openSheet(h);
-  setOn('#gCur button', 'gc', GF.cur); setOn('#gKind button', 'gk', GF.kind); syncThumbs(false);
+  setOn('#gSide button', 'gs', GF.sell ? 'sell' : 'buy'); setOn('#gCur button', 'gc', GF.cur); setOn('#gKind button', 'gk', GF.kind); syncThumbs(false);
   $('gAmt').addEventListener('input', goldPer); $('gQty').addEventListener('input', goldPer);
 }
+function goldSide(v){ GF.sell = v === 'sell'; setOn('#gSide button', 'gs', v); }
 function goldPer(){
   var el = $('gPer'); if (!el) return;
   var a = parseAmount($('gAmt').value, GF.cur), q = goldQtyIn($('gQty').value);
-  el.textContent = a > 0 && q > 0 ? '≈ ' + money(convTo(a, GF.cur, 'VNĐ') / q, 'VNĐ') + '/chỉ · 1 lượng = 10 chỉ' : '1 lượng = 10 chỉ';
+  el.textContent = a > 0 && q > 0 ? '≈ ' + trieu(convTo(a, GF.cur, 'VNĐ') / q) + '/chỉ' : '';
 }
 function goldSave(btn){
   var amt = parseAmount($('gAmt').value, GF.cur), q = goldQtyIn($('gQty').value), sell = GF.sell;
   if (!(amt > 0)) { shake($('gAmt')); $('gAmt').focus(); return; }
   if (!(q > 0)) { shake($('gQty')); $('gQty').focus(); return; }
-  var g = {date:$('gDate').value || S.data.settings.today, amount:amt, cur:GF.cur, qty:q, kind:GF.kind, place:$('gPlace').value.trim(), note:$('gNote').value.trim(), sell:sell};
+  var g = {date:$('gDate').value || S.data.settings.today, amount:amt, cur:GF.cur, qty:q, kind:GF.kind, place:$('gPlace').value.trim(), sell:sell};
   busy(btn, apiCall({action:'goldAdd', gold:g})).then(function(r){
     useData(r.data); closeSheet(); updateBadge();
-    toast((sell ? L('Đã ghi bán ', 'Recorded a sale of ') : L('Đã ghi mua ', 'Recorded ')) + nf3.format(q) + L(' chỉ vàng', ' chỉ of gold'));
+    toast((sell ? L('Đã ghi bán ', 'Sold ') : L('Đã ghi mua ', 'Recorded ')) + nf3.format(q) + ' chỉ');
   }).catch(function(){});
-}
-function goldPriceForm(){
-  var gs = S.data.settings.gold || {};
-  openSheet('<h2 class="sh-title">' + L('Giá vàng hôm nay', 'Today\'s gold price') + '</h2>'
-    + fld(L('Giá 1 chỉ (VNĐ)', 'Price per chỉ (VNĐ)'), '<input class="f big num" id="gPrice" inputmode="decimal" autocomplete="off" value="' + (gs.price ? fmtIn(gs.price, 'VNĐ') : '') + '" placeholder="0"><small>' + L('Nên dùng giá tiệm mua lại (giá mua vào) để biết nếu bán ngay thì được bao nhiêu. Có thể gõ tắt, ví dụ 15,2tr.', 'Use the shop\'s buy-back price to see what you would get if you sold now. Shortcuts work, e.g. 15.2tr.') + '</small>')
-    + '<button class="primary" data-gact="savePrice">' + L('Lưu giá', 'Save price') + '</button>');
-}
-function goldPlanForm(){
-  var gs = S.data.settings.gold || {}, day = +gs.day || 0, opts = '<option value="0"' + (day ? '' : ' selected') + '>' + L('Không nhắc', 'No reminder') + '</option>';
-  for (var i = 1; i <= 28; i++) opts += '<option value="' + i + '"' + (i === day ? ' selected' : '') + '>' + L('Ngày ', 'Day ') + i + '</option>';
-  openSheet('<h2 class="sh-title">' + L('Kế hoạch mua vàng', 'Gold buying plan') + '</h2>'
-    + fld(L('Mỗi tháng khoảng (VNĐ)', 'Each month about (VNĐ)'), '<div class="mv-row"><input class="f num" id="gMin" inputmode="decimal" autocomplete="off" value="' + (gs.min ? fmtIn(gs.min, 'VNĐ') : '') + '" placeholder="15tr"><span class="gdash">–</span><input class="f num" id="gMax" inputmode="decimal" autocomplete="off" value="' + (gs.max ? fmtIn(gs.max, 'VNĐ') : '') + '" placeholder="17tr"></div>')
-    + fld(L('Nhắc từ ngày', 'Remind from'), '<select class="f" id="gDay">' + opts + '</select><small>' + L('Từ ngày này, nếu tháng đó chưa ghi mua vàng thì trang chủ hiện thẻ nhắc kèm nút Ghi mua vàng.', 'From this day, if nothing is recorded that month, Home shows a reminder with a Record button.') + '</small>')
-    + '<button class="primary" data-gact="savePlan">' + L('Lưu kế hoạch', 'Save plan') + '</button>');
 }
 function goldAct(a, btn){
   if (a === 'buy') return goldForm(false);
-  if (a === 'sell') return goldForm(true);
-  if (a === 'price') return goldPriceForm();
-  if (a === 'plan') return goldPlanForm();
   if (a === 'save') return goldSave(btn);
-  var g = null;
-  if (a === 'savePrice') { var pv = parseAmount($('gPrice').value, 'VNĐ'); if (!(pv > 0)) { shake($('gPrice')); $('gPrice').focus(); return; } g = {price:pv}; }
-  if (a === 'savePlan') {
-    var mn = $('gMin').value.trim() ? parseAmount($('gMin').value, 'VNĐ') : 0, mx = $('gMax').value.trim() ? parseAmount($('gMax').value, 'VNĐ') : 0;
-    if (!(mn >= 0)) { shake($('gMin')); return; } if (!(mx >= 0)) { shake($('gMax')); return; }
-    g = {min:mn, max:mx, day:+$('gDay').value || 0};
-  }
-  if (!g) return;
-  busy(btn, apiCall({action:'goldSet', gold:g})).then(function(r){ useData(r.data); closeSheet(); updateBadge(); toast(a === 'savePrice' ? L('Đã lưu giá vàng', 'Gold price saved') : L('Đã lưu kế hoạch', 'Plan saved')); }).catch(function(){});
 }
 
 /* ---------- Khác ---------- */
@@ -2669,6 +2656,7 @@ document.addEventListener('click', function(ev){
   var ds = b.dataset;
   if (ds.bact) { budAct(ds.bact, b); return; }
   if (ds.gact) { goldAct(ds.gact, b); return; }
+  if (b.closest('#gSide')) { goldSide(ds.gs); return; }
   if (b.closest('#gCur')) { GF.cur = ds.gc; setOn('#gCur button', 'gc', ds.gc); goldPer(); return; }
   if (b.closest('#gKind')) { GF.kind = ds.gk; setOn('#gKind button', 'gk', ds.gk); jelly(b); return; }
   if (ds.adx) { var td = S.data.settings.today; S.y = +td.slice(0, 4); S.m = +td.slice(5, 7); if (ds.adx === 'budget') S.bt = 'bud'; goView(ds.adx, document.querySelector('#tabbar [data-v="' + ds.adx + '"]')); return; }
