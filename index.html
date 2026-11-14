@@ -819,6 +819,34 @@ html{touch-action:manipulation}
 .catsect{display:flex;justify-content:space-between;align-items:center}
 .catdone{padding:5px 14px;border-radius:999px;font-size:13px;font-weight:800;letter-spacing:0;text-transform:none;background:var(--cta);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:var(--cta-shadow)}
 @media (prefers-reduced-motion: reduce){ #fCats.jiggle .cat{animation:none} }
+
+/* ===== v19 · chart overview + sub-level reports ===== */
+.rgo{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 12px 0}
+.rgo button{display:flex;align-items:center;gap:8px;padding:13px 12px;white-space:nowrap;border-radius:20px;background:var(--glass);border:1px solid var(--gborder);box-shadow:inset 0 1px 0 var(--ghi);color:var(--ink);font:inherit;font-weight:800;font-size:15px;text-align:left}
+.rgo button span{font-size:18px}
+.rgo button i{margin-left:auto;font-style:normal;color:var(--muted);font-size:20px;line-height:1}
+.rback{margin:10px 12px 0}
+.rback button{padding:7px 14px 7px 10px;border-radius:999px;background:var(--glass);border:1px solid var(--gborder);color:var(--ink);font:inherit;font-weight:700;font-size:14px}
+.ova .donut{max-width:230px;margin:4px auto 0}
+.oleg{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:10px}
+.oleg>div{display:grid;grid-template-columns:10px 1fr;column-gap:8px;align-items:center;min-width:0;font-size:13px}
+.oleg i{width:10px;height:10px;border-radius:50%;flex:none}
+.oleg span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.oleg b{grid-column:2;font-weight:800;font-size:15px;white-space:nowrap}
+.ovm-row{display:flex;align-items:center;gap:16px;margin-top:6px}
+.ovm-row .ring,.ovm-row .ring svg{width:112px;height:112px;flex:none}
+.ovm-row .ring .rc b{font-size:22px}
+.ovm-r{flex:1;min-width:0}
+.ovm-cap{font-size:12px;color:var(--muted);font-weight:600}
+.ovm-cap b{color:var(--ink);font-weight:800;margin-left:4px}
+.alloc{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--track);margin:8px 0 10px}
+.alloc i{display:block;height:100%}
+.alloc i+i{box-shadow:-2px 0 0 var(--base2)}
+.alloc-l{display:flex;flex-direction:column;gap:6px}
+.alloc-l>div{display:flex;align-items:center;gap:8px;font-size:13px}
+.alloc-l i{width:9px;height:9px;border-radius:50%;flex:none}
+.alloc-l span{color:var(--muted);flex:1}
+.alloc-l b{font-weight:800}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -829,7 +857,7 @@ html{touch-action:manipulation}
 <div class="app">
   <header class="top"><div class="bar-in">
     <div><button class="pill" id="btnCur" title="Đổi đơn vị hiển thị (S$ / VNĐ)"><b id="curLbl">S$</b> ⇄</button></div>
-    <div id="hc"><h1 id="title">Nhập vào</h1><div class="hseg" id="rPeriod" hidden><button data-p="o" class="on">Tổng quan</button><button data-p="m">Hàng tháng</button><button data-p="y">Hàng năm</button></div></div>
+    <div id="hc"><h1 id="title">Nhập vào</h1><div class="hseg" id="rPeriod" hidden><button data-p="m" class="on">Hàng tháng</button><button data-p="y">Hàng năm</button></div></div>
     <div class="r"><button class="round" id="btnSearch" aria-label="Tìm kiếm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button></div>
   </div></header>
 
@@ -869,6 +897,7 @@ html{touch-action:manipulation}
 
   <!-- BÁO CÁO -->
   <section class="view" id="v-report">
+    <div class="rback" id="rBack" hidden><button data-rb="1">‹ Tổng quan</button></div>
     <div class="mnav"><button data-nav="-1" aria-label="Trước">‹</button><div class="box" id="repLbl"></div><button data-nav="1" aria-label="Sau">›</button></div>
     <div id="repBody"></div>
   </section>
@@ -1273,11 +1302,11 @@ function dnSelect(svg, idx, force){
   if (on) {
     svg.setAttribute('data-sel', idx);
     l.textContent = on.name === '__other' ? 'Danh mục khác' : shortName(on.name).slice(0, 22);
-    v.textContent = money(on.v); v.style.fill = mixHex(on.c, '#ffffff', .25);
+    v.textContent = (svg.getAttribute('data-short') ? moneyS : money)(on.v); v.style.fill = mixHex(on.c, '#ffffff', .25);
     pc.textContent = nf1.format(tot ? on.v / tot * 100 : 0) + ' %';
   } else {
     svg.removeAttribute('data-sel');
-    l.textContent = svg.getAttribute('data-kind'); v.textContent = money(tot); v.style.fill = ''; pc.textContent = svg.getAttribute('data-sub') || '';
+    l.textContent = svg.getAttribute('data-kind'); v.textContent = (svg.getAttribute('data-short') ? moneyS : money)(tot); v.style.fill = ''; pc.textContent = svg.getAttribute('data-sub') || '';
   }
   v.style.fontSize = fsz(v.textContent) + 'px';
   [].forEach.call(document.querySelectorAll('.rrow'), function(rw){ rw.classList.toggle('hl', !!on && on.rows.indexOf(rw.getAttribute('data-rc')) >= 0); });
@@ -1432,7 +1461,7 @@ function setOn(sel, attr, val){ [].forEach.call(document.querySelectorAll(sel), 
 /* ================= render ================= */
 function render(){
   $('title').textContent = S.edit ? 'Sửa khoản' : TITLES[S.view];
-  var rep = S.view === 'report' && !S.edit;
+  var rep = S.view === 'report' && !S.edit && S.rp !== 'o';
   $('title').hidden = rep; $('rPeriod').hidden = !rep; setOn('#rPeriod button', 'p', S.rp);
   $('curLbl').textContent = S.disp;
   setOn('#tabbar button', 'v', S.view);
@@ -1442,6 +1471,7 @@ function render(){
   $('calLbl').innerHTML = lbl; $('budLbl').innerHTML = lbl;
   $('repLbl').innerHTML = S.rp === 'm' ? lbl : '<b>' + S.y + '</b><span>(01/01 – 31/12)</span>';
   document.querySelector('#v-report .mnav').hidden = S.rp === 'o';
+  $('rBack').hidden = S.rp === 'o';
   if (S.view === 'input') renderForm();
   if (S.view === 'cal') renderCal();
   if (S.view === 'report') renderReport();
@@ -1495,39 +1525,48 @@ function ovTile(label, v, cls, sub, key, tap){
   return '<div' + (tap ? ' data-ov="' + tap + '"' : '') + '><span>' + label + '</span><b class="num ' + (cls || '') + '"' + cu(key, v, 0, 1) + '>' + moneyS(v) + '</b>' + (sub ? '<em>' + sub + '</em>' : '') + '</div>';
 }
 function ovHtml(){
-  var d = S.data, O = overviewData(), t = d.settings.today, y = +t.slice(0, 4), m = +t.slice(5, 7);
-  var ms = sums(monthEntries(y, m)), ys = sums(inRange(y + '-01-01', t)), pb = O.budget ? Math.round(ms.chi / O.budget * 100) : 0;
-  var h = overviewHtml();
-  h += '<div class="card ovc"><h3>' + L('Tháng ', 'Month ') + m + '/' + y + '</h3><div class="ov-grid">'
-    + ovTile(L('Thu nhập', 'Income'), ms.thu, 'c-thu', '', 'om1')
-    + ovTile(L('Chi tiêu', 'Spending'), ms.chi, 'c-chi', O.budget ? pb + L('% của ', '% of ') + moneyS(O.budget) : '', 'om2', 'spend')
-    + ovTile(L('Tiết kiệm', 'Savings'), ms.quy, 'c-quy', saveTag(monthEntries(y, m)), 'om3')
-    + ovTile(L('Còn lại', 'Left'), ms.thu - ms.chi - ms.quy, ms.thu - ms.chi - ms.quy < 0 ? 'c-neg' : 'c-thu', '', 'om4')
-    + '</div></div>';
-  // savings breakdown: gold, each jar, the rest
-  var gold = 0, jarSum = {}, other = 0, jars = d.jars || [];
+  var d = S.data, O = overviewData(), t = d.settings.today, y = +t.slice(0, 4), m = +t.slice(5, 7), jars = d.jars || [];
+  var h = '<div class="rgo"><button data-rgo="m"><span>📅</span>' + L('Hàng tháng', 'Monthly') + '<i>›</i></button><button data-rgo="y"><span>🗓️</span>' + L('Hàng năm', 'Yearly') + '<i>›</i></button></div>';
+  // assets donut: spendable money, gold, each jar, other savings
+  var gold = 0, other = 0, inJar = {};
   d.entries.forEach(function(e){
     if (typeOf(e) !== 'Tiết kiệm') return;
     var v = conv(e.amount, e.cur);
     if (isGold(e)) { gold += v; return; }
     var hit = jars.filter(function(j){ return jarEntries(j).indexOf(e) >= 0; })[0];
-    if (hit) jarSum[hit.id] = (jarSum[hit.id] || 0) + v; else other += v;
+    if (!hit) other += v;
   });
-  var rows = '';
-  if (gold || O.gold) rows += '<div class="ovs-row" data-ov="gold"><div class="ovs-ic" style="background:rgba(232,185,36,.16)">🪙</div><div class="ovs-tx"><b>' + L('Vàng', 'Gold') + '</b><span>' + nf3.format(O.gold) + ' chỉ</span></div><div class="ovs-am num">' + moneyS(gold) + '</div></div>';
-  jars.forEach(function(j){
-    var st = jarStats(j), bal = convTo(st.bal, j.cur, S.disp), tg = convTo(j.target, j.cur, S.disp);
-    rows += '<div class="ovs-row" data-ov="jar"><div class="ovs-ic">' + esc(j.icon || '🫙') + '</div><div class="ovs-tx"><b>' + esc(j.name) + '</b><span>' + moneyS(bal) + ' / ' + moneyS(tg) + '</span>'
-      + '<div class="bar"><div style="width:' + Math.min(100, st.pct * 100).toFixed(1) + '%;background:var(--ok)"></div></div></div><div class="ovs-am num">' + Math.round(st.pct * 100) + '%</div></div>';
-  });
-  if (Math.abs(other) > 0.004) rows += '<div class="ovs-row" data-ov="jar"><div class="ovs-ic">💰</div><div class="ovs-tx"><b>' + L('Tiết kiệm khác', 'Other savings') + '</b></div><div class="ovs-am num">' + moneyS(other) + '</div></div>';
-  if (rows) h += '<div class="card ovc"><h3>' + L('Tiết kiệm', 'Savings') + '<small>' + moneyS(O.save) + '</small></h3>' + rows + '</div>';
-  h += '<div class="card ovc"><h3>' + L('Năm ', 'Year ') + y + '</h3><div class="ov-grid">'
-    + ovTile(L('Thu nhập', 'Income'), ys.thu, 'c-thu', '', 'oy1')
-    + ovTile(L('Chi tiêu', 'Spending'), ys.chi, 'c-chi', '', 'oy2')
-    + ovTile(L('Tiết kiệm', 'Savings'), ys.quy, 'c-quy', saveTag(inRange(y + '-01-01', t)), 'oy3')
-    + ovTile(L('Còn lại', 'Left'), ys.thu - ys.chi - ys.quy, ys.thu - ys.chi - ys.quy < 0 ? 'c-neg' : 'c-thu', '', 'oy4')
-    + '</div></div>';
+  var JC = ['#2BB673', '#14B8A6', '#A78BFA', '#F472B6', '#38BDF8'], parts = [{name:L('Tiền để tiêu', 'Spendable'), v:O.cash, c:'#4F8DFF', go:'spend'}];
+  if (gold > 0.004) parts.push({name:L('Vàng', 'Gold'), v:gold, c:'#E8B924', go:'gold'});
+  jars.forEach(function(j, k){ var b = convTo(jarStats(j).bal, j.cur, S.disp); if (b > 0.004) parts.push({name:j.name, v:b, c:JC[k % JC.length], go:'jar'}); });
+  if (other > 0.004) parts.push({name:L('Tiết kiệm khác', 'Other savings'), v:other, c:'#8E94A8', go:'jar'});
+  parts = parts.filter(function(x){ return x.v > 0.004; });
+  var tot = parts.reduce(function(a, x){ return a + x.v; }, 0);
+  if (tot > 0) {
+    var segs = parts.map(function(x){ return {name:x.name, v:x.v, c:x.c, f:x.v / tot, rows:[]}; });
+    h += '<div class="card ova"><h3>' + L('Tài sản', 'Assets') + '</h3><div class="donut">' + donut(segs, tot, 0, L('Tài sản', 'Assets')) + '</div><div class="oleg">'
+      + parts.map(function(x){ return '<div data-ov="' + (x.go === 'spend' ? 'cash' : x.go) + '"><i style="background:' + x.c + '"></i><span>' + esc(x.name) + '</span><b class="num">' + moneyS(x.v) + '</b></div>'; }).join('')
+      + '</div></div>';
+  }
+  // this month: budget ring + where the income went
+  var ms = sums(monthEntries(y, m)), B = O.budget, p = B ? ms.chi / B : 0, thr = d.settings.threshold || .8, left = ms.thu - ms.chi - ms.quy;
+  var al = [[L('Chi tiêu', 'Spending'), ms.chi, 'var(--chi)'], [L('Tiết kiệm', 'Savings'), ms.quy, 'var(--quy)'], [L('Còn lại', 'Left'), Math.max(0, left), 'var(--thu)']];
+  var base = Math.max(ms.thu, ms.chi + ms.quy + Math.max(0, left)) || 1;
+  h += '<div class="card"><h3>' + L('Tháng ', 'Month ') + m + '</h3><div class="ovm-row">'
+    + '<div class="ring" data-ov="spend">' + ringSvg(p, B ? bcol(p, thr) : 'var(--muted)') + '<div class="rc"><b class="num">' + (B ? Math.round(p * 100) + '%' : '–') + '</b><span>' + L('ngân sách', 'of budget') + '</span></div></div>'
+    + '<div class="ovm-r"><div class="ovm-cap">' + L('Thu nhập', 'Income') + '<b class="num">' + moneyS(ms.thu) + '</b></div>'
+    + '<div class="alloc">' + al.map(function(a){ return a[1] > 0 ? '<i style="width:' + (a[1] / base * 100).toFixed(1) + '%;background:' + a[2] + '"></i>' : ''; }).join('') + '</div>'
+    + '<div class="alloc-l">' + al.map(function(a){ return '<div><i style="background:' + a[2] + '"></i><span>' + a[0] + '</span><b class="num">' + (ms.thu > 0 ? Math.round(a[1] / ms.thu * 100) + '%' : moneyS(a[1])) + '</b></div>'; }).join('') + '</div>'
+    + '</div></div></div>';
+  // last 12 months: income vs spending
+  var labels = [], tl = [], thu = [], chi = [];
+  for (var k = 11; k >= 0; k--) {
+    var dd = new Date(y, m - 1 - k, 1), sm = sums(monthEntries(dd.getFullYear(), dd.getMonth() + 1));
+    labels.push(ML(dd.getMonth() + 1)); tl.push(pad(dd.getMonth() + 1) + '/' + dd.getFullYear()); thu.push(sm.thu); chi.push(sm.chi);
+  }
+  h += '<div class="card"><h3>' + L('12 tháng', '12 months') + '</h3><div class="chart">'
+    + svgChart({labels:labels, tl:tl, bars:[{v:thu, c:'var(--thu)', n:L('Thu nhập', 'Income')}, {v:chi, c:'var(--chi)', n:L('Chi tiêu', 'Spending')}], h:160, hi:11}) + '</div>'
+    + legend([[L('Thu nhập', 'Income'), 'var(--thu)'], [L('Chi tiêu', 'Spending'), 'var(--chi)']]) + '</div>';
   return h;
 }
 function kpiBox(label, v, prev, cmp){ return '<div class="kpi"><span>' + label + '</span><b class="num"' + cu('k' + label, v, 0, 1) + '>' + moneyS(v) + '</b>' + deltaPill(v, prev, true) + '<em>' + cmp + '</em></div>'; }
@@ -1796,8 +1835,8 @@ function mixHex(c, w, t){
   var a = parseInt(c.slice(1), 16), b = parseInt(w.slice(1), 16), ch = function(sh){ return Math.round(((a >> sh) & 255) * (1 - t) + ((b >> sh) & 255) * t); };
   return '#' + ((1 << 24) | (ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).slice(1);
 }
-function donut(segs, total, nCats){
-  var cx = 120, cy = 120, R = 92, SW = 22, GAP = 7, cap = (SW / 2 + GAP / 2) / R, kind = S.rk === 'Chi' ? 'Chi tiêu' : 'Thu nhập', kc = S.rk === 'Chi' ? 'var(--chi)' : 'var(--thu)', tv = money(total);
+function donut(segs, total, nCats, kindLbl){
+  var cx = 120, cy = 120, R = 92, SW = 22, GAP = 7, cap = (SW / 2 + GAP / 2) / R, kind = kindLbl || (S.rk === 'Chi' ? 'Chi tiêu' : 'Thu nhập'), kc = kindLbl ? 'var(--accent)' : S.rk === 'Chi' ? 'var(--chi)' : 'var(--thu)', tv = kindLbl ? moneyS(total) : money(total);
   var sub = nCats ? nCats + ' danh mục' : '';
   DNROWS = segs; DN++;
   var id = 'dn' + DN, P = function(a){ return [cx + R * Math.sin(a), cy - R * Math.cos(a)]; };
@@ -1824,12 +1863,12 @@ function donut(segs, total, nCats){
     body += '<g class="sl" data-sl="' + i + '"' + vars + '>' + shape + '</g>';
     a0 += span; acc += sg.f;
   });
-  return '<svg class="dn" viewBox="0 0 240 240" role="img" data-total="' + total + '" data-kind="' + kind + '" data-sub="' + sub + '"><defs>' + defs + '</defs>'
+  return '<svg class="dn" viewBox="0 0 240 240" role="img" data-total="' + total + '" data-kind="' + kind + '" data-sub="' + sub + '"' + (kindLbl ? ' data-short="1"' : '') + '><defs>' + defs + '</defs>'
     + '<circle class="dn-core" cx="' + cx + '" cy="' + cy + '" r="' + (R - SW / 2 - 2) + '" fill="url(#' + id + 'c)"/>'
     + '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="none" style="stroke:var(--track)" stroke-width="' + SW + '"/>'
     + '<g opacity=".16" style="stroke-width:' + (SW + 12) + 'px">' + glow.replace(/stroke-width="\d+"/g, '') + '</g><g class="slices">' + body + '</g>'
     + '<text class="dn-l" x="' + cx + '" y="101" text-anchor="middle">' + kind + '</text>'
-    + '<text class="dn-v num" x="' + cx + '" y="130" text-anchor="middle" style="font-size:' + fsz(tv) + 'px"' + cu('dn', total) + '>' + tv + '</text>'
+    + '<text class="dn-v num" x="' + cx + '" y="130" text-anchor="middle" style="font-size:' + fsz(tv) + 'px"' + (kindLbl ? cu('dn', total, 0, 1) : cu('dn', total)) + '>' + tv + '</text>'
     + '<text class="dn-p" x="' + cx + '" y="151" text-anchor="middle">' + sub + '</text></svg>';
 }
 function chartW(){ var a = document.querySelector('.app'); return Math.round(Math.min(700, Math.max(300, ((a && a.clientWidth) || 375) - 60))); }
@@ -2855,7 +2894,7 @@ document.addEventListener('click', function(ev){
   if (sl) { dnSelect(sl.closest('svg'), +sl.getAttribute('data-sl')); return; }
   if (tg.closest && tg.closest('svg.dn')) { dnSelect(tg.closest('svg.dn'), null); return; }
   var ovc = tg.closest && tg.closest('[data-ov]');
-  if (ovc) { var ok = ovc.dataset.ov; if (ok === 'spend') budgetDetail(); else { S.bt = ok === 'jar' ? 'jar' : ok === 'gold' || overviewData().gold ? 'gold' : 'jar'; goView('budget', document.querySelector('#tabbar [data-v="budget"]')); } return; }
+  if (ovc) { var ok = ovc.dataset.ov; if (ok === 'cash') return; if (ok === 'spend') budgetDetail(); else { S.bt = ok === 'jar' ? 'jar' : ok === 'gold' || overviewData().gold ? 'gold' : 'jar'; goView('budget', document.querySelector('#tabbar [data-v="budget"]')); } return; }
   var alc = tg.closest && !tg.closest('button') && tg.closest('.alert[data-alk]');
   if (alc) { alertDetail(alc.dataset.alk); return; }
   var be = tg.closest && !tg.closest('button') && tg.closest('[data-bedit]');
@@ -2863,13 +2902,15 @@ document.addEventListener('click', function(ev){
   var b = tg.closest('button'); if (!b) return;
   var ds = b.dataset;
   if (ds.bact) { budAct(ds.bact, b); return; }
+  if (ds.rgo) { motion({anim:true, els:[['#repBody', 'a-r']]}); S.rp = ds.rgo; S.rc = ''; render(); window.scrollTo(0, 0); return; }
+  if (ds.rb) { motion({anim:true, els:[['#repBody', 'a-l']]}); S.rp = 'o'; render(); window.scrollTo(0, 0); return; }
   if (ds.gact) { goldAct(ds.gact, b); return; }
   if (b.closest('#gSide')) { goldSide(ds.gs); return; }
   if (b.closest('#gCur')) { GF.cur = ds.gc; setOn('#gCur button', 'gc', ds.gc); goldPer(); return; }
   if (b.closest('#gKind')) { GF.kind = ds.gk; setOn('#gKind button', 'gk', ds.gk); jelly(b); return; }
   if (ds.adx) { var td = S.data.settings.today; S.y = +td.slice(0, 4); S.m = +td.slice(5, 7); if (ds.adx === 'budget') S.bt = 'bud'; goView(ds.adx, document.querySelector('#tabbar [data-v="' + ds.adx + '"]')); return; }
   if (b.closest('#bWhen')) { budWhen(ds.bw); return; }
-  if (b.closest('#tabbar')) { goView(ds.v, b); return; }
+  if (b.closest('#tabbar')) { if (ds.v === 'report') S.rp = 'o'; goView(ds.v, b); return; }
   if (b.closest('#bTab')) { var bo = ['bud', 'jar', 'rec', 'gold'], o2 = bo.indexOf(S.bt), n2 = bo.indexOf(ds.bt); if (o2 !== n2) motion({anim:true, els:[['#budBody', n2 > o2 ? 'a-r' : 'a-l']]}); S.bt = ds.bt; render(); return; }
   if (ds.jar) { openJar(+ds.jar); return; }
   if (ds.jact) { jarAction(ds.jact, +ds.id || 0, b); return; }
