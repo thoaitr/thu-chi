@@ -1526,6 +1526,7 @@ function ovTile(label, v, cls, sub, key, tap){
 }
 function ovHtml(){
   var d = S.data, O = overviewData(), t = d.settings.today, y = +t.slice(0, 4), m = +t.slice(5, 7), jars = d.jars || [];
+  var rs = function(v){ return S.disp === 'VNĐ' ? moneyS(v) : (v < 0 ? '-' : '') + 'S$' + nf0.format(Math.round(Math.abs(v))); };
   var h = '<div class="rgo"><button data-rgo="m"><span>📅</span>' + L('Hàng tháng', 'Monthly') + '<i>›</i></button><button data-rgo="y"><span>🗓️</span>' + L('Hàng năm', 'Yearly') + '<i>›</i></button></div>';
   // assets donut: spendable money, gold, each jar, other savings
   var gold = 0, other = 0, inJar = {};
@@ -1545,7 +1546,7 @@ function ovHtml(){
   if (tot > 0) {
     var segs = parts.map(function(x){ return {name:x.name, v:x.v, c:x.c, f:x.v / tot, rows:[]}; });
     h += '<div class="card ova"><h3>' + L('Tài sản', 'Assets') + '</h3><div class="donut">' + donut(segs, tot, 0, L('Tài sản', 'Assets')) + '</div><div class="oleg">'
-      + parts.map(function(x){ return '<div data-ov="' + (x.go === 'spend' ? 'cash' : x.go) + '"><i style="background:' + x.c + '"></i><span>' + esc(x.name) + '</span><b class="num">' + moneyS(x.v) + '</b></div>'; }).join('')
+      + parts.map(function(x){ return '<div data-ov="' + (x.go === 'spend' ? 'cash' : x.go) + '"><i style="background:' + x.c + '"></i><span>' + esc(x.name) + '</span><b class="num">' + rs(x.v) + '</b></div>'; }).join('')
       + '</div></div>';
   }
   // this month: budget ring + where the income went
@@ -1554,9 +1555,9 @@ function ovHtml(){
   var base = Math.max(ms.thu, ms.chi + ms.quy + Math.max(0, left)) || 1;
   h += '<div class="card"><h3>' + L('Tháng ', 'Month ') + m + '</h3><div class="ovm-row">'
     + '<div class="ring" data-ov="spend">' + ringSvg(p, B ? bcol(p, thr) : 'var(--muted)') + '<div class="rc"><b class="num">' + (B ? Math.round(p * 100) + '%' : '–') + '</b><span>' + L('ngân sách', 'of budget') + '</span></div></div>'
-    + '<div class="ovm-r"><div class="ovm-cap">' + L('Thu nhập', 'Income') + '<b class="num">' + moneyS(ms.thu) + '</b></div>'
+    + '<div class="ovm-r"><div class="ovm-cap">' + L('Thu nhập', 'Income') + '<b class="num">' + rs(ms.thu) + '</b></div>'
     + '<div class="alloc">' + al.map(function(a){ return a[1] > 0 ? '<i style="width:' + (a[1] / base * 100).toFixed(1) + '%;background:' + a[2] + '"></i>' : ''; }).join('') + '</div>'
-    + '<div class="alloc-l">' + al.map(function(a){ return '<div><i style="background:' + a[2] + '"></i><span>' + a[0] + '</span><b class="num">' + (ms.thu > 0 ? Math.round(a[1] / ms.thu * 100) + '%' : moneyS(a[1])) + '</b></div>'; }).join('') + '</div>'
+    + '<div class="alloc-l">' + al.map(function(a){ return '<div><i style="background:' + a[2] + '"></i><span>' + a[0] + '</span><b class="num">' + (ms.thu > 0 ? Math.round(a[1] / ms.thu * 100) + '%' : rs(a[1])) + '</b></div>'; }).join('') + '</div>'
     + '</div></div></div>';
   // last 12 months: income vs spending
   var labels = [], tl = [], thu = [], chi = [];
