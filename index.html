@@ -771,6 +771,21 @@ html{touch-action:manipulation}
 .gl-am.in{color:var(--ok)}
 #gSide{width:100%;margin:0 0 16px}
 #gSide button{flex:1}
+
+/* ===== v15 · overview ===== */
+.ov{margin:10px 12px 0;padding:14px 16px 14px}
+.ov-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:0 0 12px;border-bottom:1px solid var(--line)}
+.ov-top span{font-size:13px;color:var(--muted);font-weight:700}
+.ov-top b{font-size:clamp(24px,7.5vw,32px);font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+.ov-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;padding-top:12px}
+.ov-grid>div{min-width:0;-webkit-tap-highlight-color:transparent}
+.ov-grid span{display:block;font-size:12px;color:var(--muted);font-weight:600}
+.ov-grid b{display:block;font-size:clamp(17px,5.2vw,21px);font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.ov-grid em{display:block;font-style:normal;font-size:11.5px;color:var(--faint);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-ov]{cursor:pointer}
+.sum3 .sumleft{grid-column:1/-1;display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:10px 4px 0;padding:10px 6px 0;border-top:1px solid var(--line);text-align:left}
+.sum3 .sumleft span{font-size:13px}
+.sum3 .sumleft b{margin:0}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1410,6 +1425,28 @@ function deltaPill(cur, prev, spend){
   var up = p > 0, good = spend ? !up : up;
   return '<span class="delta ' + (good ? 'good' : 'bad') + '">' + (up ? '↑' : '↓') + ' ' + nf0.format(Math.abs(p * 100)) + '%</span>';
 }
+function overviewData(){
+  var d = S.data, st = d.settings, t = st.today, y = +t.slice(0, 4), m = +t.slice(5, 7), yr = st.year || y;
+  var O = {cash:conv(st.start || 0, st.startCur || 'S$'), save:0, gold:0, m:m};
+  d.entries.forEach(function(e){
+    var v = conv(e.amount, e.cur), ty = typeOf(e);
+    if (ty === 'Tiết kiệm') { O.save += v; if (isGold(e)) O.gold += goldQty(e); }
+    if (e.date > t || +e.date.slice(0, 4) < yr) return;
+    O.cash += ty === 'Thu' ? v : -v;
+  });
+  var ms = sums(monthEntries(y, m));
+  O.spent = ms.chi; O.left = ms.thu - ms.chi - ms.quy; O.budget = monthBudget(); O.total = O.cash + O.save;
+  return O;
+}
+function overviewHtml(){
+  var O = overviewData(), pb = O.budget ? Math.round(O.spent / O.budget * 100) : 0;
+  return '<div class="card ov"><div class="ov-top"><span>' + L('Tài sản hiện có', 'What you have') + '</span><b class="num"' + cu('ovT', O.total, 0, 1) + '>' + moneyS(O.total) + '</b></div><div class="ov-grid">'
+    + '<div><span>' + L('Số dư', 'Balance') + '</span><b class="num ' + (O.cash < 0 ? 'c-neg' : '') + '"' + cu('ovC', O.cash, 0, 1) + '>' + moneyS(O.cash) + '</b><em>' + L('ngoài tiết kiệm', 'excluding savings') + '</em></div>'
+    + '<div data-ov="save"><span>' + L('Tiết kiệm', 'Savings') + '</span><b class="num c-quy"' + cu('ovS', O.save, 0, 1) + '>' + moneyS(O.save) + '</b><em>' + (O.gold ? L('gồm ', 'incl. ') + nf3.format(O.gold) + L(' chỉ vàng', ' chỉ of gold') : L('quỹ và hũ', 'funds and jars')) + '</em></div>'
+    + '<div data-ov="spend"><span>' + L('Chi tháng ', 'Spent in month ') + O.m + '</span><b class="num c-chi"' + cu('ovP', O.spent, 0, 1) + '>' + moneyS(O.spent) + '</b><em>' + (O.budget ? pb + L('% của ', '% of ') + moneyS(O.budget) : L('chưa đặt ngân sách', 'no budget set')) + '</em></div>'
+    + '<div><span>' + L('Còn lại tháng ', 'Left in month ') + O.m + '</span><b class="num ' + (O.left < 0 ? 'c-neg' : 'c-thu') + '"' + cu('ovL', O.left, 0, 1) + '>' + moneyS(O.left) + '</b><em>' + L('sau chi và tiết kiệm', 'after spending and savings') + '</em></div>'
+    + '</div></div>';
+}
 function kpiBox(label, v, prev, cmp){ return '<div class="kpi"><span>' + label + '</span><b class="num"' + cu('k' + label, v, 0, 1) + '>' + moneyS(v) + '</b>' + deltaPill(v, prev, true) + '<em>' + cmp + '</em></div>'; }
 function renderHello(){
   if (S.edit) { $('hello').innerHTML = ''; return; }
@@ -1417,9 +1454,7 @@ function renderHello(){
   var greet = hr < 11 ? 'Chào buổi sáng' : hr < 14 ? 'Chào buổi trưa' : hr < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
   var pmS = new Date(d.getFullYear(), d.getMonth() - 1, 1), pmE = new Date(d.getFullYear(), d.getMonth() - 1, Math.min(d.getDate(), lastDay(pmS.getFullYear(), pmS.getMonth() + 1)));
   $('hello').innerHTML = '<div class="hello"><h2>' + greet + ' 👋</h2><p><i class="dot"></i>' + WD[d.getDay()] + ', ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' · <span id="syncTxt">' + esc(S.sync || '') + '</span></p></div>'
-    + '<div class="kpis">' + kpiBox('Hôm nay', spentBetween(t, t), spentBetween(addDays(t, -1), addDays(t, -1)), 'so với hôm qua')
-    + kpiBox('7 ngày qua', spentBetween(addDays(t, -6), t), spentBetween(addDays(t, -13), addDays(t, -7)), 'so với 7 ngày trước')
-    + kpiBox('Tháng này', spentBetween(t.slice(0, 8) + '01', t), spentBetween(iso(pmS), iso(pmE)), 'so với cùng kỳ tháng trước') + '</div>';
+    + overviewHtml();
 }
 function renderForm(){
   renderHello();
@@ -1541,14 +1576,15 @@ function renderCal(){
       + (v && v.chi ? '<span class="c">' + compact(v.chi) + '</span>' : '') + '</span></button>';
   }
   $('cal').innerHTML = h;
-  var me = monthEntries(y, m), s = sums(me), tot = s.thu - s.chi;
+  var me = monthEntries(y, m), s = sums(me), tot = s.thu - s.chi - s.quy;
   $('calSum').innerHTML = '<div><span>Thu nhập</span><b class="c-thu num"' + cu('c1', s.thu, 0, 1) + '>' + moneyS(s.thu) + '</b></div>'
     + '<div><span>Chi tiêu</span><b class="c-chi num"' + cu('c2', s.chi, 0, 1) + '>' + moneyS(s.chi) + '</b></div>'
-    + '<div><span>Tổng</span><b class="num ' + (tot < 0 ? 'c-neg' : 'c-thu') + '"' + cu('c3', tot, 0, 1) + '>' + moneyS(tot) + '</b></div>';
+    + '<div><span>Tiết kiệm</span><b class="c-quy num"' + cu('c3', s.quy, 0, 1) + '>' + moneyS(s.quy) + '</b></div>'
+    + '<div class="sumleft"><span>' + L('Còn lại thực tế', 'Left after savings') + '</span><b class="num ' + (tot < 0 ? 'c-neg' : 'c-thu') + '"' + cu('c4', tot, 0, 1) + '>' + moneyS(tot) + '</b></div>';
   var st = S.data.settings, open = 0;
   if (y === st.year) {
     var before = inRange(y + '-01-01', ym(y, m) + '-00'), b = sums(before);
-    open = conv(st.start, st.startCur) + b.thu - b.chi;
+    open = conv(st.start, st.startCur) + b.thu - b.chi - b.quy;
   }
   var close = open + tot;
   $('calBal').innerHTML = y === st.year
@@ -2648,6 +2684,8 @@ document.addEventListener('click', function(ev){
   if (tg.closest && tg.closest('.scrim')) { closeSheet(); return; }
   if (sl) { dnSelect(sl.closest('svg'), +sl.getAttribute('data-sl')); return; }
   if (tg.closest && tg.closest('svg.dn')) { dnSelect(tg.closest('svg.dn'), null); return; }
+  var ovc = tg.closest && tg.closest('[data-ov]');
+  if (ovc) { if (ovc.dataset.ov === 'spend') budgetDetail(); else { S.bt = overviewData().gold ? 'gold' : 'jar'; goView('budget', document.querySelector('#tabbar [data-v="budget"]')); } return; }
   var alc = tg.closest && !tg.closest('button') && tg.closest('.alert[data-alk]');
   if (alc) { alertDetail(alc.dataset.alk); return; }
   var be = tg.closest && !tg.closest('button') && tg.closest('[data-bedit]');
