@@ -882,6 +882,16 @@ html{touch-action:manipulation}
 .sheet-wrap .sheet{will-change:transform}
 .sheet-wrap .scrim{will-change:opacity}
 #sheetBody{transform-origin:50% 0}
+
+/* ===== v24 · search ===== */
+.search{position:relative}
+.search input{-webkit-appearance:none;appearance:none;padding-right:46px}
+.search input::-webkit-search-cancel-button,.search input::-webkit-search-decoration{-webkit-appearance:none;display:none}
+#qClr{position:absolute;right:20px;top:calc(50% - 12px);width:28px;height:28px;border-radius:50%;border:0;padding:0;background:var(--line2);color:var(--ink);font:inherit;font-size:17px;line-height:28px;text-align:center}
+#qClr[hidden]{display:none}
+#v-cal.srch .mnav,#v-cal.srch #cal,#v-cal.srch .sumcard,#v-cal.srch #calAdd{display:none}
+#v-cal.srch #dayList{margin-top:10px}
+.dh .stot{display:flex;gap:10px}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -923,7 +933,7 @@ html{touch-action:manipulation}
 
   <!-- LỊCH -->
   <section class="view" id="v-cal">
-    <div class="search" id="searchBar"><input id="q" placeholder="Tìm theo nội dung hoặc danh mục…" autocomplete="off"></div>
+    <div class="search" id="searchBar"><input id="q" type="search" enterkeyhint="search" placeholder="Tìm nội dung, danh mục, số tiền" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button id="qClr" type="button" aria-label="Xoá" hidden>×</button></div>
     <div class="mnav"><button data-nav="-1" aria-label="Tháng trước">‹</button><div class="box" id="calLbl"></div><button data-nav="1" aria-label="Tháng sau">›</button></div>
     <div class="cal" id="cal"></div>
     <div class="card sumcard"><div class="sum3" id="calSum"></div><div class="bal" id="calBal"></div></div>
@@ -1023,7 +1033,7 @@ var EN = {
   'Chưa nhập vào':'Not entered','Danh mục':'Categories','Hình thức (không bắt buộc)':'Payment method (optional)','Ghi chú thêm (không bắt buộc)':'Extra note (optional)',
   'Nhập khoản tiền chi':'Add expense','Nhập khoản tiền thu':'Add income','Nhập khoản tiết kiệm':'Add savings','Lưu thay đổi':'Save changes','Huỷ':'Cancel',
   'Xoá khoản này':'Delete entry','Bấm lần nữa để xoá':'Tap again to delete','Hàng tháng':'Monthly','Hàng năm':'Yearly','Tìm kiếm':'Search',
-  'Tìm theo nội dung hoặc danh mục…':'Search notes or categories…','Đổi đơn vị hiển thị (S$ / VNĐ)':'Switch display currency (S$ / VNĐ)',
+  'Tìm theo nội dung hoặc danh mục…':'Search notes or categories…','Tìm nội dung, danh mục, số tiền':'Search notes, categories, amounts','Đổi đơn vị hiển thị (S$ / VNĐ)':'Switch display currency (S$ / VNĐ)',
   'Ngày trước':'Previous day','Ngày sau':'Next day','Chọn ngày':'Pick a date','Tháng trước':'Last month','Tháng sau':'Next month','Trước':'Previous','Sau':'Next',
   'Cài đặt':'Settings','Giao diện':'Appearance','Tối':'Dark','Sáng':'Light','Theo máy':'System','Hiển thị bằng':'Display in','Tỷ giá: 1 S$ =':'Rate: 1 S$ =',
   'Lưu tỷ giá':'Save rate','Dữ liệu':'Data','Mở bảng tính ↗':'Open spreadsheet ↗','Tải lại dữ liệu':'Reload data','Tải lại':'Reload',
@@ -1755,11 +1765,19 @@ function renderCal(){
     ? '<div><span>Tiền để tiêu đầu kì</span><b class="num ' + (open < 0 ? 'c-neg' : '') + '">' + money(open) + '</b></div><div><span>Tiền để tiêu</span><b class="num ' + (close < 0 ? 'c-neg' : '') + '">' + money(close) + '</b></div>'
     : '<div><span>Tiền để tiêu chỉ tính cho năm ' + st.year + '</span></div>';
   $('calBal').style.display = '';
+  $('v-cal').classList.toggle('srch', !!S.q); $('qClr').hidden = !$('q').value;
   renderDayList(S.q ? searchEntries(S.q) : me, !!S.q);
 }
+function foldVN(x){ return String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase(); }
 function searchEntries(q){
-  q = q.toLowerCase();
-  return S.data.entries.filter(function(e){ return (e.memo + ' ' + e.cat + ' ' + e.note).toLowerCase().indexOf(q) >= 0; });
+  var raw = String(q).normalize('NFC').toLowerCase(), plain = foldVN(raw) === raw;
+  var words = raw.split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  return S.data.entries.filter(function(e){
+    var hay = [e.memo, e.cat, e.note, e.amount, money(e.amount, e.cur)].join(' ').normalize('NFC').toLowerCase();
+    if (plain) hay = foldVN(hay);
+    return words.every(function(w){ return hay.indexOf(w) >= 0; });
+  });
 }
 function renderDayList(list, isSearch){
   list = list.slice().sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : b.row - a.row; });
@@ -1767,7 +1785,11 @@ function renderDayList(list, isSearch){
   var groups = {}, order = [];
   list.forEach(function(e){ if (!groups[e.date]) { groups[e.date] = []; order.push(e.date); } groups[e.date].push(e); });
   var dimOn = !isSearch && S.pick && groups[S.pick];
-  var h = isSearch ? '<div class="dh"><span>Kết quả tìm "' + esc(S.q) + '"</span><span>' + list.length + ' khoản</span></div>' : '';
+  var h = '';
+  if (isSearch) {
+    var ts = sums(list), tl = [['chi', 'c-chi'], ['thu', 'c-thu'], ['quy', 'c-quy']].filter(function(x){ return ts[x[0]] > 0.004; });
+    h = '<div class="dh"><span>' + list.length + L(' khoản', ' items') + '</span><span class="stot">' + tl.map(function(x){ return '<b class="num ' + x[1] + '">' + moneyS(ts[x[0]]) + '</b>'; }).join('') + '</span></div>';
+  }
   order.forEach(function(k){
     var g = groups[k], s = sums(g), net = s.thu - s.chi, d = fromIso(k), off = dimOn && k !== S.pick ? ' off' : '';
     h += '<div class="dh' + off + '" id="day-' + k + '" data-d="' + k + '"><span>' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' (' + WD[d.getDay()] + ')</span><span class="num">' + money(net, null, true) + '</span></div>';
@@ -3109,7 +3131,9 @@ document.addEventListener('click', function(ev){
 $('fDate').addEventListener('change', function(){ if (this.value) { S.f.date = this.value; renderForm(); } });
 $('fAmount').addEventListener('input', hint);
 $('fAmount').addEventListener('keydown', function(e){ if (e.key === 'Enter') save(); });
-$('q').addEventListener('input', function(){ S.q = this.value.trim(); renderCal(); });
+$('q').addEventListener('input', function(){ var had = !!S.q; S.q = this.value.trim(); renderCal(); if (S.q && !had) window.scrollTo(0, 0); });
+$('q').addEventListener('keydown', function(ev){ if (ev.key === 'Enter') { ev.preventDefault(); this.blur(); } });
+$('qClr').addEventListener('click', function(ev){ ev.stopPropagation(); var q = $('q'); q.value = ''; S.q = ''; renderCal(); q.focus(); });
 var rsz; window.addEventListener('resize', function(){ clearTimeout(rsz); rsz = setTimeout(function(){ if (S.data && (S.view === 'report')) render(); }, 200); });
 
 document.addEventListener('click', function(){ syncThumbs(true); });
