@@ -807,6 +807,18 @@ html{touch-action:manipulation}
 .hseg button{white-space:nowrap}
 @media (max-width:420px){ .hseg button{padding:7px 9px;font-size:12.5px} }
 @media (max-width:390px){ .hseg button{padding:7px 7px;font-size:12px} }
+
+/* ===== v18 · rearrange category tiles ===== */
+#fCats{position:relative}
+#fCats .cat{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#fCats.jiggle .cat{animation:jig .24s ease-in-out infinite alternate;will-change:transform}
+#fCats.jiggle .cat:nth-child(2n){animation-delay:-.12s;animation-direction:alternate-reverse}
+#fCats.jiggle .cat:nth-child(3n){animation-duration:.27s}
+#fCats .cat.lift{animation:none !important;transition:none !important;position:relative;z-index:6;box-shadow:0 18px 40px rgba(0,0,0,.45);opacity:.96}
+@keyframes jig{from{transform:rotate(-1.5deg)}to{transform:rotate(1.5deg)}}
+.catsect{display:flex;justify-content:space-between;align-items:center}
+.catdone{padding:5px 14px;border-radius:999px;font-size:13px;font-weight:800;letter-spacing:0;text-transform:none;background:var(--cta);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:var(--cta-shadow)}
+@media (prefers-reduced-motion: reduce){ #fCats.jiggle .cat{animation:none} }
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -837,7 +849,7 @@ html{touch-action:manipulation}
       <div class="seg small" id="fCur"><button data-c="S$">S$</button><button data-c="VNĐ">VNĐ</button></div></div>
     <div class="hint" id="fHint"></div>
     </div>
-    <div class="sect">Danh mục</div>
+    <div class="sect catsect">Danh mục<button class="catdone" id="catDone" hidden>Xong</button></div>
     <div class="catgrid" id="fCats"></div>
     <div class="sect">Hình thức (không bắt buộc)</div>
     <div class="chips" id="fHow"></div>
@@ -1160,6 +1172,7 @@ function popIcon(btn){
 var SWITCHING = false;
 function goView(v, btn){
   closeSheet();
+  catEditOff();
   if (SWITCHING || !v) return;
   if (S.edit) resetForm();
   if (v === S.view) { render(); window.scrollTo({top:0, behavior:RM ? 'auto' : 'smooth'}); return; }
@@ -1541,7 +1554,7 @@ function renderForm(){
   var d = fromIso(f.date);
   $('fDateLbl').textContent = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' (' + WD[d.getDay()] + ')';
   $('fDate').value = f.date;
-  var cats = S.data.cats.filter(function(c){ return (c.type === 'Thu' || c.type === 'Tiết kiệm' ? c.type : 'Chi') === f.type; });
+  var cats = orderCats(S.data.cats.filter(function(c){ return (c.type === 'Thu' || c.type === 'Tiết kiệm' ? c.type : 'Chi') === f.type; }), f.type);
   $('fCats').innerHTML = cats.map(function(c){
     return '<button class="cat' + (c.name === f.cat[f.type] ? ' on' : '') + '" data-cat="' + esc(c.name) + '" aria-label="' + esc(c.name) + '">' + tile(c.name) + '<span>' + esc(c.name) + '</span></button>';
   }).join('');
@@ -2728,6 +2741,88 @@ function addOnDay(day){
   setTimeout(function(){ var a = $('fAmount'); if (a) a.scrollIntoView({block:'center', behavior:RM ? 'auto' : 'smooth'}); }, 380);
   toast(L('Nhập khoản cho ngày ', 'New entry for ') + fmtD(day));
 }
+/* ---------- rearrange category tiles (long-press, drag, Xong) ---------- */
+var CATORD = (function(){ try { return JSON.parse(localStorage.getItem('catOrder') || '{}') || {}; } catch (e) { return {}; } })();
+function orderCats(list, type){
+  var o = CATORD[type]; if (!o || !o.length) return list;
+  return list.slice().sort(function(a, b){ var ia = o.indexOf(a.name), ib = o.indexOf(b.name); return (ia < 0 ? 1e4 : ia) - (ib < 0 ? 1e4 : ib); });
+}
+var CE = {on:false, drag:null, timer:0, sx:0, sy:0, lx:0, ly:0, suppress:false, type:''};
+function saveCatOrder(){
+  var g = $('fCats'); if (!g || !CE.type) return;
+  CATORD[CE.type] = [].map.call(g.querySelectorAll('.cat'), function(b){ return b.dataset.cat; });
+  try { localStorage.setItem('catOrder', JSON.stringify(CATORD)); } catch (e) {}
+}
+function catEditOn(){
+  if (CE.on) return;
+  CE.on = true; CE.type = S.f.type;
+  $('fCats').classList.add('jiggle'); $('catDone').hidden = false;
+  try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+}
+function catEditOff(){
+  if (!CE.on) return;
+  if (CE.drag) catDragEnd();
+  saveCatOrder();
+  CE.on = false; CE.suppress = false;
+  $('fCats').classList.remove('jiggle'); $('catDone').hidden = true;
+}
+function catLayout(t){ return {x:t.offsetLeft, y:t.offsetTop, w:t.offsetWidth, h:t.offsetHeight}; }
+function catDragStart(t, px, py){
+  var r = t.getBoundingClientRect();
+  CE.drag = {el:t, gx:px - r.left, gy:py - r.top};
+  t.classList.add('lift');
+  catDragMove(px, py);
+}
+function catDragMove(px, py){
+  var D = CE.drag; if (!D) return;
+  var el = D.el, g = $('fCats'), gr = g.getBoundingClientRect(), x = px - gr.left, y = py - gr.top;
+  var tiles = [].slice.call(g.querySelectorAll('.cat')), over = null;
+  tiles.forEach(function(t){
+    if (t === el) return;
+    var L = catLayout(t);
+    if (x > L.x + L.w * .18 && x < L.x + L.w * .82 && y > L.y + L.h * .18 && y < L.y + L.h * .82) over = t;
+  });
+  if (over) {
+    var from = tiles.indexOf(el), to = tiles.indexOf(over), first = tiles.map(catLayout);
+    g.insertBefore(el, to > from ? over.nextSibling : over);
+    tiles.forEach(function(t, i){
+      if (t === el || !t.animate) return;
+      var b = catLayout(t), dx = first[i].x - b.x, dy = first[i].y - b.y;
+      if (dx || dy) t.animate([{transform:'translate(' + dx + 'px,' + dy + 'px)'}, {transform:'translate(0,0)'}], {duration:260, easing:'cubic-bezier(.22,1,.36,1)'});
+    });
+  }
+  var B = catLayout(el);
+  el.style.transform = 'translate(' + (px - D.gx - gr.left - B.x).toFixed(1) + 'px,' + (py - D.gy - gr.top - B.y).toFixed(1) + 'px) scale(1.08)';
+}
+function catDragEnd(){
+  var D = CE.drag; if (!D) return;
+  CE.drag = null;
+  var el = D.el, cur = el.style.transform;
+  el.style.transform = ''; el.classList.remove('lift');
+  if (!RM && el.animate && cur) el.animate([{transform:cur}, {transform:'translate(0,0) scale(1)'}], {duration:240, easing:'cubic-bezier(.22,1,.36,1)'});
+  saveCatOrder();
+}
+(function(){
+  var g = $('fCats');
+  g.addEventListener('pointerdown', function(ev){
+    var t = ev.target.closest && ev.target.closest('.cat'); if (!t || ev.button > 0) return;
+    CE.sx = CE.lx = ev.clientX; CE.sy = CE.ly = ev.clientY;
+    if (CE.on) { CE.suppress = true; catDragStart(t, ev.clientX, ev.clientY); return; }
+    clearTimeout(CE.timer);
+    CE.timer = setTimeout(function(){ CE.timer = 0; catEditOn(); CE.suppress = true; catDragStart(t, CE.lx, CE.ly); }, 480);
+  });
+  document.addEventListener('pointermove', function(ev){
+    if (CE.timer) { CE.lx = ev.clientX; CE.ly = ev.clientY; if (Math.abs(ev.clientX - CE.sx) > 9 || Math.abs(ev.clientY - CE.sy) > 9) { clearTimeout(CE.timer); CE.timer = 0; } return; }
+    if (CE.drag) catDragMove(ev.clientX, ev.clientY);
+  }, {passive:true});
+  var end = function(){ if (CE.timer) { clearTimeout(CE.timer); CE.timer = 0; } if (CE.drag) catDragEnd(); };
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+  document.addEventListener('touchmove', function(ev){ if (CE.drag) ev.preventDefault(); }, {passive:false});
+  g.addEventListener('contextmenu', function(ev){ ev.preventDefault(); });
+  g.addEventListener('click', function(ev){ if (CE.on || CE.suppress) { ev.stopPropagation(); ev.preventDefault(); CE.suppress = false; } }, true);
+  $('catDone').addEventListener('click', function(ev){ ev.stopPropagation(); catEditOff(); });
+  document.addEventListener('click', function(ev){ if (CE.on && !CE.drag && !(ev.target.closest && (ev.target.closest('#fCats') || ev.target.closest('#catDone')))) catEditOff(); }, true);
+})();
 /* ================= load & events ================= */
 function reload(quiet){
   if (!CONN && !window.__mockApi) { showConnect(); return Promise.resolve(); }
@@ -2789,7 +2884,7 @@ document.addEventListener('click', function(ev){
   if (b.closest('#rCur')) { setOn('#rCur button', 'cc', ds.cc); return; }
   if (b.closest('#rMode')) { setOn('#rMode button', 'rm', ds.rm); return; }
   if (ds.nav) { navMonth(+ds.nav); return; }
-  if (b.closest('#fType')) { if (S.f.type !== ds.t) { S.f.type = ds.t; renderForm(); if (!RM) replay($('fCats'), 'a-fade'); } return; }
+  if (b.closest('#fType')) { catEditOff(); if (S.f.type !== ds.t) { S.f.type = ds.t; renderForm(); if (!RM) replay($('fCats'), 'a-fade'); } return; }
   if (b.closest('#fCur')) { S.f.cur = ds.c; renderForm(); return; }
   if (b.closest('#mCur')) { CU = {}; motion({anim:true}); S.disp = ds.c; store('disp', S.disp); render(); return; }
   if (b.closest('#mBg')) {
