@@ -2111,12 +2111,12 @@ function dismissed(){
 }
 function paceInfo(){
   var d = S.data, t = d.settings.today, y = +t.slice(0, 4), m = +t.slice(5, 7), dim = lastDay(y, m), dom = +t.slice(8, 10);
-  var spent = {}, rec = {}, fixed = {}, P = {y:y, m:m, dim:dim, dom:dom, left:dim - dom + 1, total:0, fixedSpent:0, fixedExp:0, vari:0, fixedList:[], varList:[]};
-  (d.recur || []).forEach(function(it){ if (it.on && cinfo(it.cat).type !== 'Thu' && cinfo(it.cat).type !== 'Tiết kiệm') rec[it.cat] = (rec[it.cat] || 0) + conv(it.amount, it.cur); });
+  var spent = {}, rec = {}, pend = {}, fixed = {}, ymNow = t.slice(0, 7), P = {y:y, m:m, dim:dim, dom:dom, left:dim - dom + 1, total:0, fixedSpent:0, fixedExp:0, vari:0, fixedList:[], varList:[]};
+  (d.recur || []).forEach(function(it){ var ty = cinfo(it.cat).type; if (!it.on || ty === 'Thu' || ty === 'Tiết kiệm') return; rec[it.cat] = 1; if (it.last < ymNow) pend[it.cat] = (pend[it.cat] || 0) + conv(it.amount, it.cur); });
   d.cats.forEach(function(c){ if (c.type !== 'Thu' && c.type !== 'Tiết kiệm' && (c.group === 'Chi phí cố định' || rec[c.name])) fixed[c.name] = 1; });
   monthEntries(y, m).forEach(function(e){ if (typeOf(e) !== 'Chi') return; var v = conv(e.amount, e.cur); spent[e.cat] = (spent[e.cat] || 0) + v; P.total += v; });
   Object.keys(fixed).forEach(function(n){
-    var sp = spent[n] || 0, exp = Math.max(sp, rec[n] || 0, cinfo(n).group === 'Chi phí cố định' ? conv(d.budgets[n] || 0, 'S$') : 0);
+    var sp = spent[n] || 0, exp = rec[n] ? sp + (pend[n] || 0) : Math.max(sp, conv(d.budgets[n] || 0, 'S$'));
     P.fixedSpent += sp; P.fixedExp += exp;
     if (exp > 0) P.fixedList.push([n, sp, exp]);
   });
