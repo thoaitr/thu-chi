@@ -847,6 +847,12 @@ html{touch-action:manipulation}
 .alloc-l i{width:9px;height:9px;border-radius:50%;flex:none}
 .alloc-l span{color:var(--muted);flex:1}
 .alloc-l b{font-weight:800}
+
+/* ===== v20 · focus a calendar day ===== */
+#dayList .dh,#dayList .it{transition:opacity .3s ease}
+#dayList .off{opacity:.22}
+#dayList.dimfx .off{animation:dimin .35s ease both}
+@keyframes dimin{from{opacity:1}to{opacity:.22}}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1202,6 +1208,7 @@ var SWITCHING = false;
 function goView(v, btn){
   closeSheet();
   catEditOff();
+  if (v !== S.view) S.pick = '';
   if (SWITCHING || !v) return;
   if (S.edit) resetForm();
   if (v === S.view) { render(); window.scrollTo({top:0, behavior:RM ? 'auto' : 'smooth'}); return; }
@@ -1727,14 +1734,15 @@ function renderDayList(list, isSearch){
   if (!list.length) { $('dayList').innerHTML = '<div class="empty">' + (isSearch ? 'Không tìm thấy khoản nào.' : 'Chưa có khoản nào trong tháng này.<br>Bấm "Nhập vào" để thêm.') + '</div>'; return; }
   var groups = {}, order = [];
   list.forEach(function(e){ if (!groups[e.date]) { groups[e.date] = []; order.push(e.date); } groups[e.date].push(e); });
+  var dimOn = !isSearch && S.pick && groups[S.pick];
   var h = isSearch ? '<div class="dh"><span>Kết quả tìm "' + esc(S.q) + '"</span><span>' + list.length + ' khoản</span></div>' : '';
   order.forEach(function(k){
-    var g = groups[k], s = sums(g), net = s.thu - s.chi, d = fromIso(k);
-    h += '<div class="dh" id="day-' + k + '"><span>' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' (' + WD[d.getDay()] + ')</span><span class="num">' + money(net, null, true) + '</span></div>';
+    var g = groups[k], s = sums(g), net = s.thu - s.chi, d = fromIso(k), off = dimOn && k !== S.pick ? ' off' : '';
+    h += '<div class="dh' + off + '" id="day-' + k + '" data-d="' + k + '"><span>' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' (' + WD[d.getDay()] + ')</span><span class="num">' + money(net, null, true) + '</span></div>';
     g.forEach(function(e){
       var t = typeOf(e), cls = t === 'Thu' ? 'c-thu' : t === 'Tiết kiệm' ? 'c-quy' : '';
       var other = e.cur !== S.disp ? '<small>≈ ' + money(conv(e.amount, e.cur)) + '</small>' : '';
-      h += '<button class="it" data-row="' + e.row + '">' + tile(e.cat) + '<div class="tx"><b>' + esc(e.cat) + '</b>'
+      h += '<button class="it' + off + '" data-row="' + e.row + '" data-d="' + k + '">' + tile(e.cat) + '<div class="tx"><b>' + esc(e.cat) + '</b>'
         + (e.memo ? '<span>(' + esc(e.memo) + ')</span>' : '') + (e.pending ? '<span class="pend">⏳ chờ gửi</span>' : '') + '</div><div class="am num ' + cls + '">' + money(e.amount, e.cur) + other + '</div><span class="chev">›</span></button>';
     });
   });
@@ -2774,6 +2782,18 @@ function notifyClick(id){
 }
 
 var LASTTAP = {};
+function focusDay(dk){
+  var el = document.getElementById('day-' + dk); if (!el) return;
+  var list = $('dayList'), heads = list.querySelectorAll('.dh[data-d]'), first = heads[0] === el, last = heads[heads.length - 1] === el;
+  var its = list.querySelectorAll('.it[data-d="' + dk + '"]'), endEl = its.length ? its[its.length - 1] : el;
+  var topBar = (document.querySelector('.top') || {}).offsetHeight || 70, tab = ($('tabbar') || {}).offsetHeight || 70;
+  var a = el.getBoundingClientRect().top + window.scrollY, b = endEl.getBoundingClientRect().bottom + window.scrollY;
+  var room = innerHeight - topBar - tab - 20, max = Math.max(0, document.documentElement.scrollHeight - innerHeight), y;
+  if (first || dk === S.data.settings.today || b - a > room) y = a - topBar - 8;
+  else if (last) y = max;
+  else y = (a + b) / 2 - (topBar + room / 2);
+  window.scrollTo({top:Math.max(0, Math.min(max, y)), behavior:RM ? 'auto' : 'smooth'});
+}
 function addOnDay(day){
   if (S.edit) resetForm(true);
   S.f.date = day;
@@ -2894,6 +2914,7 @@ document.addEventListener('click', function(ev){
   if (tg.closest && tg.closest('.scrim')) { closeSheet(); return; }
   if (sl) { dnSelect(sl.closest('svg'), +sl.getAttribute('data-sl')); return; }
   if (tg.closest && tg.closest('svg.dn')) { dnSelect(tg.closest('svg.dn'), null); return; }
+  if (tg.closest && tg.closest('#dayList .off')) { S.pick = ''; render(); return; }
   var ovc = tg.closest && tg.closest('[data-ov]');
   if (ovc) { var ok = ovc.dataset.ov; if (ok === 'cash') return; if (ok === 'spend') budgetDetail(); else { S.bt = ok === 'jar' ? 'jar' : ok === 'gold' || overviewData().gold ? 'gold' : 'jar'; goView('budget', document.querySelector('#tabbar [data-v="budget"]')); } return; }
   var alc = tg.closest && !tg.closest('button') && tg.closest('.alert[data-alk]');
@@ -2956,12 +2977,14 @@ document.addEventListener('click', function(ev){
   if (ds.day) {
     var tapT = Date.now();
     if (LASTTAP.d === ds.day && tapT - LASTTAP.t < 450) { clearTimeout(LASTTAP.timer); LASTTAP = {}; addOnDay(ds.day); return; }
+    var was = S.pick === ds.day;
     LASTTAP = {d:ds.day, t:tapT};
+    $('dayList').classList.add('dimfx'); setTimeout(function(){ $('dayList').classList.remove('dimfx'); }, 600);
     S.pick = ds.day; var p = ds.day.split('-');
     if (+p[1] !== S.m || +p[0] !== S.y) { S.y = +p[0]; S.m = +p[1]; }
     render();
     var dk = ds.day;
-    LASTTAP.timer = setTimeout(function(){ if (LASTTAP.d !== dk) return; var el = document.getElementById('day-' + dk); if (el) el.scrollIntoView({behavior:'smooth', block:'start'}); }, 460);
+    LASTTAP.timer = setTimeout(function(){ if (LASTTAP.d !== dk) return; if (was) { S.pick = ''; render(); return; } focusDay(dk); }, 460);
     return;
   }
   if (ds.row) { var row = +ds.row, e = S.data.entries.filter(function(x){ return x.row === row; })[0]; if (e && e.pending) { toast('Khoản này đang chờ gửi lên Google Sheet'); return; } if (e) startEdit(e); return; }
