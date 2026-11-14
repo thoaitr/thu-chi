@@ -961,7 +961,7 @@ var EN = {
   'Khoản này đang chờ gửi lên Google Sheet':'This entry is waiting to be sent to Google Sheet','Không tải được dữ liệu':'Could not load data',
   'Lỗi đồng bộ':'Sync error','Đang đồng bộ…':'Syncing…','Ngoại tuyến':'Offline','Chưa gửi được':'Not sent yet','Lỗi không rõ':'Unknown error',
   'Thao tác không hỗ trợ':'Unsupported action','Chưa kết nối Google Sheet':'Not connected to Google Sheet',
-  'Tổng':'Total','Số dư đầu kì':'Opening balance','Số dư':'Balance','Không tìm thấy khoản nào.':'No entries found.',
+  'Tổng':'Total','Số dư đầu kì':'Opening balance','Số dư':'Balance','Tiền để tiêu':'Spendable','Tiền để tiêu đầu kì':'Spendable at start','Không tìm thấy khoản nào.':'No entries found.',
   'Chưa có khoản nào trong tháng này.':'No entries this month yet.','Bấm "Nhập vào" để thêm.':'Tap "Add" to create one.','⏳ chờ gửi':'⏳ pending',
   'Thu chi':'Net','Xu hướng':'Trends','Theo ngày':'By day','Theo nhóm':'By group','Chưa có dữ liệu trong kỳ này.':'No data for this period.',
   'Số khoản':'Entries','Trung bình/khoản':'Avg / entry','Lớn nhất':'Largest','┄ Kỳ trước':'┄ Previous','12T':'12M','6T':'6M','30N':'30D','7N':'7D',
@@ -1461,9 +1461,20 @@ function overviewData(){
 function overviewHtml(){
   var O = overviewData(), pb = O.budget ? Math.round(O.spent / O.budget * 100) : 0;
   return '<div class="card ov"><div class="ov-top"><span>' + L('Tài sản hiện có', 'What you have') + '</span><b class="num"' + cu('ovT', O.total, 0, 1) + '>' + moneyS(O.total) + '</b></div><div class="ov-grid">'
-    + '<div><span>' + L('Số dư', 'Balance') + '</span><b class="num ' + (O.cash < 0 ? 'c-neg' : '') + '"' + cu('ovC', O.cash, 0, 1) + '>' + moneyS(O.cash) + '</b><em>' + L('ngoài tiết kiệm', 'excluding savings') + '</em></div>'
-    + '<div data-ov="save"><span>' + L('Tiết kiệm', 'Savings') + '</span><b class="num c-quy"' + cu('ovS', O.save, 0, 1) + '>' + moneyS(O.save) + '</b><em>' + (O.gold ? L('gồm ', 'incl. ') + nf3.format(O.gold) + L(' chỉ vàng', ' chỉ of gold') : L('quỹ và hũ', 'funds and jars')) + '</em></div>'
+    + '<div><span>' + L('Tiền để tiêu', 'Spendable') + '</span><b class="num ' + (O.cash < 0 ? 'c-neg' : '') + '"' + cu('ovC', O.cash, 0, 1) + '>' + moneyS(O.cash) + '</b></div>'
+    + '<div data-ov="save"><span>' + L('Tiết kiệm', 'Savings') + '</span><b class="num c-quy"' + cu('ovS', O.save, 0, 1) + '>' + moneyS(O.save) + '</b><em>' + (saveTag(S.data.entries) || L('quỹ và hũ', 'funds and jars')) + '</em></div>'
     + '</div></div>';
+}
+function saveTag(list){
+  var gq = 0, names = [], jars = S.data.jars || [];
+  list.forEach(function(e){
+    if (typeOf(e) !== 'Tiết kiệm') return;
+    if (isGold(e)) { gq += goldQty(e); return; }
+    var j = jars.filter(function(x){ return jarEntries(x).indexOf(e) >= 0; })[0], n = j ? j.name : nm(e.cat);
+    if (names.indexOf(n) < 0) names.push(n);
+  });
+  var parts = gq ? [nf3.format(gq) + L(' chỉ vàng', ' chỉ of gold')] : [];
+  return esc(parts.concat(names).slice(0, 3).join(' · '));
 }
 function ovTile(label, v, cls, sub, key, tap){
   return '<div' + (tap ? ' data-ov="' + tap + '"' : '') + '><span>' + label + '</span><b class="num ' + (cls || '') + '"' + cu(key, v, 0, 1) + '>' + moneyS(v) + '</b>' + (sub ? '<em>' + sub + '</em>' : '') + '</div>';
@@ -1475,7 +1486,7 @@ function renderOv(){
   h += '<div class="card ovc"><h3>' + L('Tháng ', 'Month ') + m + '/' + y + '</h3><div class="ov-grid">'
     + ovTile(L('Thu nhập', 'Income'), ms.thu, 'c-thu', '', 'om1')
     + ovTile(L('Chi tiêu', 'Spending'), ms.chi, 'c-chi', O.budget ? pb + L('% của ', '% of ') + moneyS(O.budget) : '', 'om2', 'spend')
-    + ovTile(L('Tiết kiệm', 'Savings'), ms.quy, 'c-quy', '', 'om3')
+    + ovTile(L('Tiết kiệm', 'Savings'), ms.quy, 'c-quy', saveTag(monthEntries(y, m)), 'om3')
     + ovTile(L('Còn lại', 'Left'), ms.thu - ms.chi - ms.quy, ms.thu - ms.chi - ms.quy < 0 ? 'c-neg' : 'c-thu', '', 'om4')
     + '</div></div>';
   // savings breakdown: gold, each jar, the rest
@@ -1499,7 +1510,7 @@ function renderOv(){
   h += '<div class="card ovc"><h3>' + L('Năm ', 'Year ') + y + '</h3><div class="ov-grid">'
     + ovTile(L('Thu nhập', 'Income'), ys.thu, 'c-thu', '', 'oy1')
     + ovTile(L('Chi tiêu', 'Spending'), ys.chi, 'c-chi', '', 'oy2')
-    + ovTile(L('Tiết kiệm', 'Savings'), ys.quy, 'c-quy', '', 'oy3')
+    + ovTile(L('Tiết kiệm', 'Savings'), ys.quy, 'c-quy', saveTag(inRange(y + '-01-01', t)), 'oy3')
     + ovTile(L('Còn lại', 'Left'), ys.thu - ys.chi - ys.quy, ys.thu - ys.chi - ys.quy < 0 ? 'c-neg' : 'c-thu', '', 'oy4')
     + '</div></div>';
   $('ovBody').innerHTML = h;
@@ -1647,8 +1658,8 @@ function renderCal(){
   }
   var close = open + tot;
   $('calBal').innerHTML = y === st.year
-    ? '<div><span>Số dư đầu kì</span><b class="num ' + (open < 0 ? 'c-neg' : '') + '">' + money(open) + '</b></div><div><span>Số dư</span><b class="num ' + (close < 0 ? 'c-neg' : '') + '">' + money(close) + '</b></div>'
-    : '<div><span>Số dư chỉ tính cho năm ' + st.year + '</span></div>';
+    ? '<div><span>Tiền để tiêu đầu kì</span><b class="num ' + (open < 0 ? 'c-neg' : '') + '">' + money(open) + '</b></div><div><span>Tiền để tiêu</span><b class="num ' + (close < 0 ? 'c-neg' : '') + '">' + money(close) + '</b></div>'
+    : '<div><span>Tiền để tiêu chỉ tính cho năm ' + st.year + '</span></div>';
   $('calBal').style.display = '';
   renderDayList(S.q ? searchEntries(S.q) : me, !!S.q);
 }
