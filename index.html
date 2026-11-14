@@ -715,6 +715,23 @@ html{touch-action:manipulation}
 .btnsm.ghost{background:var(--glass2);color:var(--ink);border:1px solid var(--line2);box-shadow:none;text-shadow:none}
 #bWhen{width:100%}
 #bWhen button{flex:1}
+
+/* ===== v12 · tappable alerts, detail sheets ===== */
+.alert[data-alk]{cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .18s var(--out3)}
+.alert[data-alk]:active{transform:scale(.985)}
+.al-more{display:inline-block;margin-top:6px;font-style:normal;font-size:12.5px;font-weight:700;color:var(--accent)}
+.dt-rows{margin:4px 0 6px}
+.dt-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:14.5px}
+.dt-row:last-child{border-bottom:0}
+.dt-row>span{color:var(--muted);min-width:0}
+.dt-row>span small{display:block;font-size:12px;color:var(--faint);margin-top:2px}
+.dt-row>b{font-weight:700;white-space:nowrap}
+.dt-row.tot{border-top:1.5px solid var(--line2);font-size:15.5px}
+.dt-row.tot>span{color:var(--ink);font-weight:700}
+.dt-row.neg>b{color:var(--neg)}
+.sheet .bud{padding:12px 2px}
+.sheet .chart{margin:8px 0 2px}
+.sheet .note b{color:var(--ink)}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1836,7 +1853,7 @@ function repDaily(list){
   h += '<div class="card"><h3>Tốc độ chi tiêu <small>so với ngân sách</small></h3><div class="chart">'
     + svgChart({labels:labels, tl:labels.map(function(x){ return pad(+x) + '/' + pad(S.m); }), lines:[{v:pace, c:'var(--muted)', dash:true, n:'Ngân sách'}, {v:cum, c:'var(--chi)', n:'Đã chi'}], h:190}) + '</div>'
     + legend([['Đã chi cộng dồn', 'var(--chi)'], ['Ngân sách chia đều theo ngày', 'var(--muted)']])
-    + '<div class="kv"><div><span>Đã chi</span><b class="c-chi num">' + money(total) + '</b></div><div><span>Ngân sách tháng</span><b class="num">' + (budget ? money(budget) : 'Chưa đặt') + '</b></div><div><span>Dự kiến cả tháng</span><b class="num ' + (budget && avg * n > budget ? 'c-neg' : '') + '">' + money(isCur ? avg * n : total) + '</b></div></div></div>';
+    + '<div class="kv"><div><span>Đã chi</span><b class="c-chi num">' + money(total) + '</b></div><div><span>Ngân sách tháng</span><b class="num">' + (budget ? money(budget) : 'Chưa đặt') + '</b></div><div><span>Dự kiến cả tháng</span><b class="num ' + (budget && (isCur ? paceInfo().proj : total) > budget ? 'c-neg' : '') + '">' + money(isCur ? paceInfo().proj : total) + '</b></div></div></div>';
   h += '<div class="card"><h3>Chi theo thứ trong tuần</h3><div class="chart">' + svgChart({labels:WDS, bars:[{v:wd, c:'var(--chi)', n:'Chi tiêu'}], h:170}) + '</div></div>';
   return h;
 }
@@ -2092,6 +2109,23 @@ function dismissed(){
   try { var d = JSON.parse(localStorage.getItem('tc_dismiss') || '{}'); if (d.day === t && d.keys) return d; } catch (e) {}
   return {day:t, keys:[]};
 }
+function paceInfo(){
+  var d = S.data, t = d.settings.today, y = +t.slice(0, 4), m = +t.slice(5, 7), dim = lastDay(y, m), dom = +t.slice(8, 10);
+  var spent = {}, rec = {}, fixed = {}, P = {y:y, m:m, dim:dim, dom:dom, left:dim - dom + 1, total:0, fixedSpent:0, fixedExp:0, vari:0, fixedList:[], varList:[]};
+  (d.recur || []).forEach(function(it){ if (it.on && cinfo(it.cat).type !== 'Thu' && cinfo(it.cat).type !== 'Tiết kiệm') rec[it.cat] = (rec[it.cat] || 0) + conv(it.amount, it.cur); });
+  d.cats.forEach(function(c){ if (c.type !== 'Thu' && c.type !== 'Tiết kiệm' && (c.group === 'Chi phí cố định' || rec[c.name])) fixed[c.name] = 1; });
+  monthEntries(y, m).forEach(function(e){ if (typeOf(e) !== 'Chi') return; var v = conv(e.amount, e.cur); spent[e.cat] = (spent[e.cat] || 0) + v; P.total += v; });
+  Object.keys(fixed).forEach(function(n){
+    var sp = spent[n] || 0, exp = Math.max(sp, rec[n] || 0, cinfo(n).group === 'Chi phí cố định' ? conv(d.budgets[n] || 0, 'S$') : 0);
+    P.fixedSpent += sp; P.fixedExp += exp;
+    if (exp > 0) P.fixedList.push([n, sp, exp]);
+  });
+  Object.keys(spent).forEach(function(n){ if (!fixed[n]) { P.vari += spent[n]; P.varList.push([n, spent[n]]); } });
+  P.fixedList.sort(function(a, b){ return b[2] - a[2]; }); P.varList.sort(function(a, b){ return b[1] - a[1]; });
+  P.perDay = dom ? P.vari / dom : 0; P.varProj = P.perDay * dim; P.proj = P.fixedExp + P.varProj;
+  P.budget = monthBudget(d); P.spent = spent;
+  return P;
+}
 function computeAlerts(){
   var d = S.data; if (!d) return [];
   var today = d.settings.today, y = +today.slice(0, 4), m = +today.slice(5, 7), ymNow = today.slice(0, 7), dim = lastDay(y, m), dom = +today.slice(8, 10), left = dim - dom + 1;
@@ -2111,7 +2145,7 @@ function computeAlerts(){
     if (p >= 1) out.push({k:'tot', lv:'bad', ic:'🚨', t:L('Đã vượt ngân sách tháng', 'Over the monthly budget'), x:money(total) + ' / ' + money(budget) + L(' · vượt ', ' · over by ') + money(total - budget)});
     else if (p >= thr) out.push({k:'tot', lv:'warn', ic:'⚠️', t:L('Đã dùng ', 'Used ') + Math.round(p * 100) + L('% ngân sách tháng', '% of the monthly budget'), x:L('Còn ', '') + money(budget - total) + L(' cho ', ' left for ') + left + L(' ngày', ' days')});
     if (p < 1 && dom >= 5) {
-      var proj = total / dom * dim;
+      var proj = paceInfo().proj;
       if (proj > budget * 1.05) out.push({k:'pace', lv:'warn', ic:'📈', t:L('Đang chi nhanh hơn kế hoạch', 'Spending faster than planned'), x:L('Cuối tháng dự kiến ', 'Projected month end ') + money(proj) + L(' (vượt ', ' (') + money(proj - budget) + L(')', ' over)')});
     }
   }
@@ -2129,10 +2163,108 @@ function computeAlerts(){
 function alertsHtml(list){
   if (!list.length) return '';
   return '<div class="alerts">' + list.map(function(a, i){
-    return '<div class="alert lv-' + a.lv + '" style="--i:' + i + '"><div class="al-ic">' + esc(a.ic) + '</div><div class="al-tx"><b>' + esc(a.t) + '</b><span>' + esc(a.x) + '</span>'
+    var dk = /^(tot|pace|over|day|jar:|soon:|due:)/.test(a.k);
+    return '<div class="alert lv-' + a.lv + '"' + (dk ? ' data-alk="' + esc(a.k) + '"' : '') + ' style="--i:' + i + '"><div class="al-ic">' + esc(a.ic) + '</div><div class="al-tx"><b>' + esc(a.t) + '</b><span>' + esc(a.x) + '</span>' + (dk && !a.act ? '<em class="al-more">' + L('Xem chi tiết', 'See details') + ' ›</em>' : '')
       + (a.act ? '<div class="al-act">' + a.act.map(function(q, qi){ return '<button class="' + (qi ? '' : 'go') + '" data-al="' + q[0] + '" data-id="' + q[1] + '">' + esc(q[2]) + '</button>'; }).join('') + '</div>' : '')
       + '</div>' + (a.keep ? '' : '<button class="al-x" data-dismiss="' + esc(a.k) + '" aria-label="' + L('Ẩn hôm nay', 'Hide for today') + '">×</button>') + '</div>';
   }).join('') + '</div>';
+}
+function dtRow(label, val, cls){ return '<div class="dt-row' + (cls ? ' ' + cls : '') + '"><span>' + label + '</span><b class="num">' + val + '</b></div>'; }
+function catRows(list){
+  var thr = S.data.settings.threshold || .8;
+  return list.map(function(r){ return budRow(icon(r[0]) + ' ' + esc(nm(r[0])), conv(S.data.budgets[r[0]] || 0, 'S$'), r[1], thr, false, r[0]); }).join('');
+}
+function detailBtns(a, b){ return '<div class="row2">' + a + b + '</div>'; }
+var BTN_BUD = function(){ return '<button data-adx="budget">' + L('Mở tab Ngân sách', 'Open Budget') + '</button>'; };
+var BTN_EDIT = function(){ return '<button data-bact="edit">' + L('Sửa ngân sách', 'Edit budget') + '</button>'; };
+function budgetDetail(){
+  var P = paceInfo(), b = P.budget, thr = S.data.settings.threshold || .8, p = b ? P.total / b : 0, left = b - P.total;
+  var even = b * P.dom / P.dim, ahead = P.total - even, lim = monthLimit();
+  var list = Object.keys(P.spent).map(function(n){ return [n, P.spent[n]]; }).sort(function(a, c){ return c[1] - a[1]; });
+  var why = ahead > 0
+    ? L('Nếu chi đều mỗi ngày thì đến hôm nay mới dùng khoảng ' + money(even) + ' (' + Math.round(even / (b || 1) * 100) + '%). Bạn đã chi nhiều hơn mức đó ' + money(ahead) + (P.fixedSpent > 0 ? (P.fixedSpent >= ahead ? ', chủ yếu vì chi cố định ' : ', trong đó có chi cố định ') + money(P.fixedSpent) + ' trả một lần trong tháng.' : '.'),
+        'At an even daily pace you would have used about ' + money(even) + ' (' + Math.round(even / (b || 1) * 100) + '%) by today. You have spent ' + money(ahead) + ' more than that' + (P.fixedSpent > 0 ? (P.fixedSpent >= ahead ? ', mostly fixed costs of ' : ', including fixed costs of ') + money(P.fixedSpent) + ' paid once a month.' : '.'))
+    : L('Bạn đang chi chậm hơn mức chia đều theo ngày.', 'You are spending slower than an even daily pace.');
+  var h = '<h2 class="sh-title">' + L('Ngân sách tháng ', 'Budget for ') + P.m + '/' + P.y + '</h2>'
+    + '<div class="sh-bal"><b class="num">' + money(P.total) + '</b><span class="num">' + L('đã chi trên ', 'spent of ') + money(b) + ' · ' + Math.round(p * 100) + '%</span></div>'
+    + '<div class="bar" style="height:10px"><div style="width:' + Math.min(100, p * 100).toFixed(1) + '%;background:' + bcol(p, thr) + '"></div></div>'
+    + '<div class="dt-rows">'
+    + dtRow(lim > 0 ? L('Giới hạn chi tiêu tháng', 'Monthly spending limit') : L('Ngân sách tháng (cộng các danh mục)', 'Monthly budget (sum of categories)'), money(b))
+    + dtRow(L('Đã chi đến hôm nay', 'Spent so far') + '<small>' + P.dom + '/' + P.dim + L(' ngày', ' days') + '</small>', money(P.total))
+    + dtRow(left >= 0 ? L('Còn lại', 'Left') : L('Đã vượt', 'Over by'), money(Math.abs(left)), left < 0 ? 'neg' : '')
+    + dtRow(L('Còn được chi mỗi ngày', 'Can spend per day') + '<small>' + P.left + L(' ngày còn lại', ' days left') + '</small>', money(P.left ? Math.max(0, left) / P.left : 0))
+    + '</div>'
+    + '<p class="note">' + L('Cảnh báo này hiện khi đã chi từ ' + Math.round(thr * 100) + '% ngân sách. ', 'This alert shows once spending reaches ' + Math.round(thr * 100) + '% of the budget. ') + why + '</p>'
+    + '<div class="sh-sub">' + L('Chi theo danh mục tháng này', 'Spending by category this month') + '</div>'
+    + '<div>' + catRows(list) + '</div>'
+    + detailBtns(BTN_BUD(), BTN_EDIT());
+  openSheet(h);
+}
+function paceDetail(){
+  var P = paceInfo(), b = P.budget, over = P.proj - b, n = P.dim;
+  var unpaid = Math.max(0, P.fixedExp - P.fixedSpent), allow = P.left ? Math.max(0, b - P.total - unpaid) / P.left : 0;
+  var labels = [], cum = [], pace = [], proj = [], daily = [], acc = 0;
+  for (var i = 0; i < n; i++) { daily.push(0); labels.push(String(i + 1)); }
+  monthEntries(P.y, P.m).forEach(function(e){ if (typeOf(e) === 'Chi') daily[+e.date.slice(8, 10) - 1] += conv(e.amount, e.cur); });
+  for (var k = 0; k < n; k++) {
+    acc += daily[k];
+    cum.push(k < P.dom ? acc : null);
+    pace.push(b * (k + 1) / n);
+    proj.push(k < P.dom - 1 ? null : P.total + (P.proj - P.total) * (k - P.dom + 1) / Math.max(1, n - P.dom));
+  }
+  var fixedTxt = P.fixedList.map(function(f){ return nm(f[0]) + ' ' + money(f[2]); }).join(', ');
+  var h = '<h2 class="sh-title">' + L('Dự kiến chi cả tháng ', 'Projected spending for ') + P.m + '/' + P.y + '</h2>'
+    + '<div class="sh-bal"><b class="num' + (over > 0 ? ' c-neg' : '') + '">' + money(P.proj) + '</b><span class="num">' + (over > 0 ? L('vượt ', 'over by ') + money(over) : L('dư ', 'under by ') + money(-over)) + L(' so với ngân sách ', ' vs the budget of ') + money(b) + '</span></div>'
+    + '<div class="chart">' + svgChart({labels:labels, tl:labels.map(function(x){ return pad(+x) + '/' + pad(P.m); }),
+        lines:[{v:pace, c:'var(--muted)', dash:true, n:L('Ngân sách chia đều', 'Budget, even pace')}, {v:proj, c:'var(--warn)', dash:true, n:L('Dự kiến', 'Projected')}, {v:cum, c:'var(--chi)', n:L('Đã chi', 'Spent')}], h:180}) + '</div>'
+    + legend([[L('Đã chi cộng dồn', 'Spent, cumulative'), 'var(--chi)'], [L('Dự kiến', 'Projected'), 'var(--warn)'], [L('Ngân sách chia đều', 'Budget, even pace'), 'var(--muted)']])
+    + '<div class="sh-sub">' + L('Cách tính', 'How it is worked out') + '</div><div class="dt-rows">'
+    + dtRow(L('Chi cố định, tính một lần', 'Fixed costs, counted once') + (fixedTxt ? '<small>' + esc(fixedTxt) + '</small>' : ''), money(P.fixedExp))
+    + dtRow(L('Chi thường ngày đến nay', 'Day-to-day spending so far') + '<small>' + P.dom + L(' ngày', ' days') + '</small>', money(P.vari))
+    + dtRow(L('Trung bình mỗi ngày', 'Average per day'), money(P.perDay))
+    + dtRow(L('Chi thường ngày cả tháng', 'Day-to-day for the whole month') + '<small>' + money(P.perDay) + ' × ' + n + L(' ngày', ' days') + '</small>', money(P.varProj))
+    + dtRow(L('Dự kiến cả tháng', 'Projected month total'), money(P.proj), 'tot')
+    + '</div>'
+    + '<div class="sh-sub">' + L('Để không vượt', 'To stay within the budget') + '</div>'
+    + '<p class="note" style="margin-top:0">' + (allow > 0
+        ? L('Từ nay đến hết tháng, chi thường ngày tối đa <b>' + money(allow) + '/ngày</b> (hiện trung bình ' + money(P.perDay) + '/ngày).', 'For the rest of the month keep day-to-day spending under <b>' + money(allow) + '/day</b> (now ' + money(P.perDay) + '/day).')
+        : L('Ngân sách tháng này đã dùng hết.', 'This month\'s budget is used up.'))
+      + (unpaid > 0 ? L(' Đã chừa ' + money(unpaid) + ' cho chi cố định chưa trả.', ' ' + money(unpaid) + ' is kept aside for fixed costs not yet paid.') : '') + '</p>'
+    + (P.varList.length ? '<div class="sh-sub">' + L('Chi thường ngày nhiều nhất', 'Largest day-to-day categories') + '</div><div class="dt-rows">'
+      + P.varList.slice(0, 6).map(function(v){ return dtRow(icon(v[0]) + ' ' + esc(nm(v[0])), money(v[1])); }).join('') + '</div>' : '')
+    + detailBtns('<button data-adx="report">' + L('Mở Báo cáo', 'Open Reports') + '</button>', BTN_EDIT());
+  openSheet(h); drawLines($('sheetBody'));
+}
+function overDetail(){
+  var P = paceInfo();
+  var list = Object.keys(P.spent).filter(function(n){ var b = conv(S.data.budgets[n] || 0, 'S$'); return b > 0 && P.spent[n] > b; })
+    .map(function(n){ return [n, P.spent[n]]; }).sort(function(a, c){ return c[1] - a[1]; });
+  var h = '<h2 class="sh-title">' + L('Danh mục vượt ngân sách', 'Categories over budget') + '</h2>'
+    + '<p class="note" style="margin-top:0">' + L('Tháng ' + P.m + '/' + P.y + '. Chạm vào một danh mục để sửa ngân sách của nó.', P.m + '/' + P.y + '. Tap a category to edit its budget.') + '</p>'
+    + '<div>' + catRows(list) + '</div>' + detailBtns(BTN_BUD(), BTN_EDIT());
+  openSheet(h);
+}
+function dayDetail(){
+  var t = S.data.settings.today, list = S.data.entries.filter(function(e){ return e.date === t && typeOf(e) === 'Chi'; }), tot = 0, past = 0;
+  list.forEach(function(e){ tot += conv(e.amount, e.cur); });
+  for (var i = 1; i <= 30; i++) { var dd = addDays(t, -i); past += spentBetween(dd, dd); }
+  var avg = past / 30;
+  var h = '<h2 class="sh-title">' + L('Chi tiêu hôm nay', 'Spending today') + '</h2>'
+    + '<div class="sh-bal"><b class="num">' + money(tot) + '</b><span class="num">' + (avg > 0 ? L('gấp ', '') + nf1.format(tot / avg) + L(' lần trung bình', '× the daily average') : '') + '</span></div>'
+    + '<div class="dt-rows">' + dtRow(L('Trung bình 30 ngày qua', 'Average of the last 30 days'), money(avg) + L('/ngày', '/day')) + '</div>'
+    + '<div class="sh-sub">' + L('Các khoản hôm nay', 'Today\'s entries') + '</div>'
+    + '<div class="sh-list">' + list.map(function(e){ return itemHtml(e, true); }).join('') + '</div>';
+  openSheet(h);
+}
+function alertDetail(k){
+  if (k === 'tot') return budgetDetail();
+  if (k === 'pace') return paceDetail();
+  if (k === 'over') return overDetail();
+  if (k === 'day') return dayDetail();
+  var id = +k.split(':')[1];
+  if (k.indexOf('jar:') === 0) return openJar(id);
+  var it = (S.data.recur || []).filter(function(x){ return x.id === id; })[0];
+  if (it) recForm(it);
 }
 function renderAlerts(){ var el = $('alerts'); if (el) el.innerHTML = S.edit ? '' : alertsHtml(computeAlerts()); }
 function dismissAlert(k, btn){
@@ -2390,11 +2522,14 @@ document.addEventListener('click', function(ev){
   if (tg.closest && tg.closest('.scrim')) { closeSheet(); return; }
   if (sl) { dnSelect(sl.closest('svg'), +sl.getAttribute('data-sl')); return; }
   if (tg.closest && tg.closest('svg.dn')) { dnSelect(tg.closest('svg.dn'), null); return; }
+  var alc = tg.closest && !tg.closest('button') && tg.closest('.alert[data-alk]');
+  if (alc) { alertDetail(alc.dataset.alk); return; }
   var be = tg.closest && !tg.closest('button') && tg.closest('[data-bedit]');
   if (be) { budForm(be.dataset.bedit); return; }
   var b = tg.closest('button'); if (!b) return;
   var ds = b.dataset;
   if (ds.bact) { budAct(ds.bact, b); return; }
+  if (ds.adx) { var td = S.data.settings.today; S.y = +td.slice(0, 4); S.m = +td.slice(5, 7); if (ds.adx === 'budget') S.bt = 'bud'; goView(ds.adx, document.querySelector('#tabbar [data-v="' + ds.adx + '"]')); return; }
   if (b.closest('#bWhen')) { budWhen(ds.bw); return; }
   if (b.closest('#tabbar')) { goView(ds.v, b); return; }
   if (b.closest('#bTab')) { var bo = ['bud', 'jar', 'rec'], o2 = bo.indexOf(S.bt), n2 = bo.indexOf(ds.bt); if (o2 !== n2) motion({anim:true, els:[['#budBody', n2 > o2 ? 'a-r' : 'a-l']]}); S.bt = ds.bt; render(); return; }
