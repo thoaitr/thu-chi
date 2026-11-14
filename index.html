@@ -1603,10 +1603,7 @@ function renderHello(){
   var t = S.data.settings.today, d = fromIso(t), hr = new Date().getHours();
   var greet = hr < 11 ? 'Chào buổi sáng' : hr < 14 ? 'Chào buổi trưa' : hr < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
   var pmS = new Date(d.getFullYear(), d.getMonth() - 1, 1), pmE = new Date(d.getFullYear(), d.getMonth() - 1, Math.min(d.getDate(), lastDay(pmS.getFullYear(), pmS.getMonth() + 1)));
-  $('hello').innerHTML = '<div class="hello"><h2>' + greet + ' 👋</h2><p><i class="dot"></i>' + WD[d.getDay()] + ', ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' · <span id="syncTxt">' + esc(S.sync || '') + '</span></p></div>'
-    + '<div class="kpis">' + kpiBox('Hôm nay', spentBetween(t, t), spentBetween(addDays(t, -1), addDays(t, -1)), 'so với hôm qua')
-    + kpiBox('7 ngày qua', spentBetween(addDays(t, -6), t), spentBetween(addDays(t, -13), addDays(t, -7)), 'so với 7 ngày trước')
-    + kpiBox('Tháng này', spentBetween(t.slice(0, 8) + '01', t), spentBetween(iso(pmS), iso(pmE)), 'so với cùng kỳ tháng trước') + '</div>';
+  $('hello').innerHTML = '<div class="hello"><h2>' + greet + ' 👋</h2><p><i class="dot"></i>' + WD[d.getDay()] + ', ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' · <span id="syncTxt">' + esc(S.sync || '') + '</span></p></div>';
 }
 function renderForm(){
   renderHello();
