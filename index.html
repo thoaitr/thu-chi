@@ -2450,10 +2450,11 @@ function budRow(label, b, s, thr, total, full){
   var left = b - s, p = b ? s / b : (s ? 1 : 0), has = b > 0 || s > 0;
   var col = b ? bcol(p, thr) : 'var(--chi)', big, cap, foot;
   if (b > 0) {
-    big = bigMoney(Math.abs(left)); cap = left < -0.004 ? L('đã vượt', 'over') : L('còn lại', 'left');
+    if (Math.abs(left) < 0.005) { big = '✓'; cap = L('vừa đủ', 'on budget'); col = 'var(--ok)'; }
+    else { big = bigMoney(left); cap = left < 0 ? L('vượt', 'over') : L('còn lại', 'left'); }
     foot = L('Đã chi ', 'Spent ') + '<b class="num">' + money(s) + '</b> / <b class="num">' + money(b) + '</b> · ' + nf0.format(p * 100) + '%';
   } else if (s > 0) {
-    big = bigMoney(s); cap = L('ngoài ngân sách', 'no budget');
+    big = bigMoney(-s); cap = L('ngoài ngân sách', 'no budget');
     foot = L('Đã chi ', 'Spent ') + '<b class="num">' + money(s) + '</b> · ' + L('chưa đặt ngân sách', 'no budget set');
   } else { big = '–'; cap = L('chưa đặt', 'not set'); foot = ''; }
   return '<div class="bud' + (total ? ' total' : '') + '"' + (full ? ' title="' + esc(full) + '" data-bedit="' + esc(full) + '"' : '') + '>'
