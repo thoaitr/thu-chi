@@ -2786,7 +2786,8 @@ function closeSheet(){
   var sh = w.querySelector('.sheet'), sc = w.querySelector('.scrim');
   if (RM || !sh.animate) { sheetStop(w); done(); return; }
   var from = {t:'translateY(0)', f:0}, fo = 1;
-  if (w._opening || w._pre) { from = sheetY(sh); fo = +getComputedStyle(sc).opacity; if (isNaN(fo)) fo = 1; }
+  if (w._opening || w._pre || w._drag) { from = sheetY(sh); fo = +getComputedStyle(sc).opacity; if (isNaN(fo)) fo = 1; }
+  w._drag = false;
   sheetStop(w);
   var d = frames(SHEET_OUT.duration * Math.max(.4, 1 - from.f));
   var a = sh.animate([{transform:from.t}, {transform:'translateY(100%)'}], {duration:d, easing:SHEET_OUT.easing, fill:'forwards'});
@@ -3440,6 +3441,53 @@ document.addEventListener('change', function(ev){
 });
 document.addEventListener('keydown', function(ev){ if (ev.key === 'Escape') closeSheet(); });
 
+/* ---------- drag a sheet down to close it ---------- */
+function sheetDrag(w, close){
+  var sh = w.querySelector('.sheet'), sc = w.querySelector('.scrim'), st = null;
+  var busy = function(){ return w.hidden || w._opening || w._closing || w._pre || (w.id === 'sheet2' && (ED.anim || ED.pre)) || CE.on; };
+  var paint = function(dy, H){ sh.style.transform = 'translateY(' + dy.toFixed(1) + 'px)'; sc.style.opacity = String(Math.max(0, 1 - dy / H).toFixed(3)); };
+  sh.addEventListener('touchstart', function(ev){
+    st = null;
+    if (ev.touches.length !== 1 || busy()) return;
+    var t = ev.touches[0];
+    st = {x:t.clientX, y:t.clientY, top:sh.scrollTop <= 0, mode:0, dy:0, raf:0, H:sh.offsetHeight || 1, hist:[]};
+  }, {passive:true});
+  sh.addEventListener('touchmove', function(ev){
+    if (!st) return;
+    var t = ev.touches[0], dx = t.clientX - st.x, dy = t.clientY - st.y;
+    if (!st.mode) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      st.mode = st.top && dy > 0 && Math.abs(dy) > Math.abs(dx) ? 1 : -1;
+      if (st.mode !== 1) return;
+      st.y = t.clientY; dy = 0;
+      if (w._snap) { w._snap.forEach(function(a){ a.cancel(); }); w._snap = null; }
+    }
+    if (st.mode !== 1) return;
+    ev.preventDefault();
+    st.dy = Math.max(0, dy);
+    st.hist.push([ev.timeStamp, t.clientY]); if (st.hist.length > 5) st.hist.shift();
+    if (!st.raf) st.raf = requestAnimationFrame(function(){ if (!st) return; st.raf = 0; paint(st.dy, st.H); });
+  }, {passive:false});
+  var end = function(){
+    var g = st; st = null;
+    if (!g || g.mode !== 1) return;
+    if (g.raf) cancelAnimationFrame(g.raf);
+    paint(g.dy, g.H);
+    var h = g.hist, v = h.length > 1 ? (h[h.length - 1][1] - h[0][1]) / Math.max(1, h[h.length - 1][0] - h[0][0]) : 0;
+    if (g.dy > g.H * .25 || (v > .5 && g.dy > 24)) { close(); return; }
+    var from = sh.style.transform, fo = +sc.style.opacity;
+    sh.style.transform = ''; sc.style.opacity = '';
+    if (g.dy < 1 || RM || !sh.animate) return;
+    var d = frames(400);
+    w._snap = [sh.animate([{transform:from}, {transform:'translateY(0)'}], {duration:d, easing:SHEET_IN.easing}),
+               sc.animate([{opacity:fo}, {opacity:1}], {duration:d, easing:SHEET_IN.easing})];
+    w._snap[0].onfinish = function(){ w._snap = null; };
+  };
+  sh.addEventListener('touchend', end);
+  sh.addEventListener('touchcancel', end);
+}
+sheetDrag($('sheet'), function(){ $('sheet')._drag = true; closeSheet(); });
+sheetDrag($('sheet2'), editCancel);
 var JELLY = '.primary,.btnsm,.chipbtn,.pill,.round,.row2 button,.mnav>button,.datebox button';
 document.addEventListener('click', function(ev){ var b = ev.target.closest && ev.target.closest(JELLY); if (b && !b.disabled) jelly(b, b.classList.contains('primary') ? .6 : 1); });
 var GLASS = '.card,.tabbar,.kpis,.cal,.form,.glist,#dayList,.bx,.bar-in,.mnav .box,.utabs,.seg,.hseg', glintEl = null, glintT = 0;
