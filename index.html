@@ -993,6 +993,10 @@ html{touch-action:manipulation}
 .rrow{align-items:center}
 .rrow .nm{white-space:normal;overflow:visible;text-overflow:clip}
 .rrow .nm span{display:block;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.3}
+
+/* ===== v35 · no rubber-band gaps ===== */
+html,body{overscroll-behavior-y:none}
+.sheet{overscroll-behavior:none}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -3450,20 +3454,26 @@ function sheetDrag(w, close){
     st = null;
     if (ev.touches.length !== 1 || busy()) return;
     var t = ev.touches[0];
-    st = {x:t.clientX, y:t.clientY, top:sh.scrollTop <= 0, mode:0, dy:0, raf:0, H:sh.offsetHeight || 1, hist:[]};
+    st = {x:t.clientX, y:t.clientY, ly:t.clientY, top:sh.scrollTop <= 0, mode:0, dy:0, raf:0, H:sh.offsetHeight || 1, hist:[]};
   }, {passive:true});
   sh.addEventListener('touchmove', function(ev){
     if (!st) return;
     var t = ev.touches[0], dx = t.clientX - st.x, dy = t.clientY - st.y;
     if (!st.mode) {
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      st.mode = st.top && dy > 0 && Math.abs(dy) > Math.abs(dx) ? 1 : -1;
-      if (st.mode !== 1) return;
-      st.y = t.clientY; dy = 0;
-      if (w._snap) { w._snap.forEach(function(a){ a.cancel(); }); w._snap = null; }
+      st.vert = Math.abs(dy) > Math.abs(dx);
+      st.mode = st.top && dy > 0 && st.vert ? 1 : -1;
+      if (st.mode === 1) { st.y = t.clientY; dy = 0; }
+    }
+    if (st.mode === -1) {
+      // a vertical scroll that reaches the top and keeps pulling down hands over to the sheet
+      var down = t.clientY > st.ly; st.ly = t.clientY;
+      if (!(st.vert && down && sh.scrollTop <= 0)) return;
+      st.mode = 1; st.y = t.clientY; dy = 0;
     }
     if (st.mode !== 1) return;
-    ev.preventDefault();
+    if (w._snap) { w._snap.forEach(function(a){ a.cancel(); }); w._snap = null; }
+    if (ev.cancelable) ev.preventDefault();
     st.dy = Math.max(0, dy);
     st.hist.push([ev.timeStamp, t.clientY]); if (st.hist.length > 5) st.hist.shift();
     if (!st.raf) st.raf = requestAnimationFrame(function(){ if (!st) return; st.raf = 0; paint(st.dy, st.H); });
