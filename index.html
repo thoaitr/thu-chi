@@ -947,6 +947,19 @@ html{touch-action:manipulation}
 .gl-d span{color:var(--au-ink2)}
 @media (prefers-reduced-transparency: reduce){
   .card.gold-hero{background:var(--au-metal) !important}}
+
+/* ===== v26 · budget rows: what's left first ===== */
+.bud .bh{align-items:center}
+.bud .bh>b{font-size:16px;min-width:0}
+.bud .bl{flex:none;display:flex;flex-direction:column;align-items:flex-end;line-height:1.05}
+.bud .bl b{font-size:21px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
+.bud .bl b small{font-size:.68em;font-weight:700;letter-spacing:0}
+.bud .bl i{font-style:normal;font-size:11.5px;font-weight:600;color:var(--muted);margin-top:3px;white-space:nowrap}
+.bud .bl.none b{color:var(--faint);font-weight:700}
+.bud .bb{display:block;margin:10px 0 7px}
+.bud .bb .bar{height:8px}
+.bud .bf{display:block;font-size:12.5px;color:var(--muted);line-height:1.35}
+.bud .bf b{margin-left:0;font-weight:600;font-size:12.5px;color:var(--ink)}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -2289,12 +2302,23 @@ function renderBudget(){
 }
 function budRow(label, b, s, thr, total, full){
   var left = b - s, p = b ? s / b : (s ? 1 : 0), has = b > 0 || s > 0;
-  var pct = b ? nf0.format(s / b * 100) + ' %' : (s ? '100 %' : '-');
-  var right = has ? 'Còn lại: <b class="num ' + (left < 0 ? 'c-neg' : 'c-thu') + '">' + money(left) + '</b>' : '<span style="font-size:17px;color:var(--muted)">Chưa đặt</span>';
-  var col = b ? bcol(p, thr) : 'var(--chi)';
-  return '<div class="bud' + (total ? ' total' : '') + '"' + (full ? ' title="' + esc(full) + '" data-bedit="' + esc(full) + '"' : '') + '><div class="bh"><b>' + label + '</b><span>' + right + '</span></div>'
-    + '<div class="bb"><div class="bar"><div style="width:' + Math.min(100, p * 100) + '%;background:' + col + '"></div></div><span class="num">' + pct + '</span></div>'
-    + '<div class="bf"><span>Ngân sách<b class="num">' + (b ? money(b) : 'Chưa đặt') + '</b></span><span>Chi tiêu<b class="num">' + (s ? money(s) : '-') + '</b></span></div></div>';
+  var col = b ? bcol(p, thr) : 'var(--chi)', big, cap, foot;
+  if (b > 0) {
+    big = bigMoney(Math.abs(left)); cap = left < -0.004 ? L('đã vượt', 'over') : L('còn lại', 'left');
+    foot = L('Đã chi ', 'Spent ') + '<b class="num">' + money(s) + '</b> / <b class="num">' + money(b) + '</b> · ' + nf0.format(p * 100) + '%';
+  } else if (s > 0) {
+    big = bigMoney(s); cap = L('ngoài ngân sách', 'no budget');
+    foot = L('Đã chi ', 'Spent ') + '<b class="num">' + money(s) + '</b> · ' + L('chưa đặt ngân sách', 'no budget set');
+  } else { big = '–'; cap = L('chưa đặt', 'not set'); foot = ''; }
+  return '<div class="bud' + (total ? ' total' : '') + '"' + (full ? ' title="' + esc(full) + '" data-bedit="' + esc(full) + '"' : '') + '>'
+    + '<div class="bh"><b>' + label + '</b><span class="bl' + (has ? '' : ' none') + '"><b class="num"' + (has ? ' style="color:' + col + '"' : '') + '>' + big + '</b><i>' + cap + '</i></span></div>'
+    + (has ? '<div class="bb"><div class="bar"><div style="width:' + Math.min(100, p * 100) + '%;background:' + col + '"></div></div></div>' : '')
+    + (foot ? '<div class="bf">' + foot + '</div>' : '') + '</div>';
+}
+/* money with the cents drawn smaller: S$118<small>,39</small> */
+function bigMoney(v){
+  var t = money(v), dec = nf2.format(1.5).charAt(1), k = t.lastIndexOf(dec);
+  return k > 0 && /^\d{2}$/.test(t.slice(k + 1)) ? esc(t.slice(0, k)) + '<small>' + esc(t.slice(k)) + '</small>' : esc(t);
 }
 function bcol(p, thr){ return p > 1 ? 'var(--neg)' : p >= thr ? 'var(--warn)' : 'var(--ok)'; }
 
