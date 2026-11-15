@@ -24,7 +24,7 @@
   --shadow:0 18px 44px rgba(0,0,0,.42);
   --ink:#F3F5FA; --muted:rgba(226,232,245,.62); --faint:rgba(226,232,245,.38);
   --line:rgba(255,255,255,.07); --line2:rgba(255,255,255,.13);
-  --chi:#FB923C; --thu:#34D399; --neg:#F87171; --quy:#A5B4FC; --ok:#34D399; --warn:#FBBF24;
+  --chi:#FB923C; --thu:#34D399; --neg:#F87171; --quy:#A5B4FC; --ok:#38BDF8; --warn:#FACC15;
   --accent:#3B82F6; --accent2:#6366F1; --sat:#60A5FA; --sun:#F87171;
   --base1:#070A12; --base2:#03050A; --track:rgba(255,255,255,.08);
   --sp-o1:#FFD9A0; --sp-o2:#F59E0B; --sp-o3:#7C3A06;
@@ -40,7 +40,7 @@
   --shadow:0 16px 36px rgba(30,41,59,.14);
   --ink:#0B1220; --muted:rgba(15,23,42,.6); --faint:rgba(15,23,42,.38);
   --line:rgba(15,23,42,.08); --line2:rgba(15,23,42,.14);
-  --chi:#EA580C; --thu:#059669; --neg:#DC2626; --quy:#4F46E5; --ok:#059669; --warn:#B45309;
+  --chi:#EA580C; --thu:#059669; --neg:#DC2626; --quy:#4F46E5; --ok:#0284C7; --warn:#A16207;
   --accent:#2563EB; --accent2:#4F46E5; --sat:#2563EB; --sun:#DC2626;
   --base1:#EEF2F9; --base2:#E3E9F3; --track:rgba(15,23,42,.08);
   --sphere-op:.75;
@@ -52,7 +52,7 @@
     --shadow:0 16px 36px rgba(30,41,59,.14);
     --ink:#0B1220; --muted:rgba(15,23,42,.6); --faint:rgba(15,23,42,.38);
     --line:rgba(15,23,42,.08); --line2:rgba(15,23,42,.14);
-    --chi:#EA580C; --thu:#059669; --neg:#DC2626; --quy:#4F46E5; --ok:#059669; --warn:#B45309;
+    --chi:#EA580C; --thu:#059669; --neg:#DC2626; --quy:#4F46E5; --ok:#0284C7; --warn:#A16207;
     --accent:#2563EB; --accent2:#4F46E5; --sat:#2563EB; --sun:#DC2626;
     --base1:#EEF2F9; --base2:#E3E9F3; --track:rgba(15,23,42,.08);
     --sphere-op:.75;
@@ -142,7 +142,7 @@ input{font:inherit;color:inherit}
 .bal div{display:flex;align-items:baseline;gap:8px}
 .bal span{color:var(--muted)}
 .bal b{font-size:16px;font-weight:700}
-.c-chi{color:var(--chi)} .c-thu{color:var(--thu)} .c-neg{color:var(--neg)} .c-quy{color:var(--quy)}
+.c-chi{color:var(--chi)} .c-thu{color:var(--thu)} .c-neg{color:var(--neg)} .c-quy{color:var(--quy)} .c-ok{color:var(--ok)} .c-warn{color:var(--warn)}
 /* day list */
 #dayList{margin:12px 12px 0;border-radius:22px}
 #dayList:empty{display:none}
@@ -969,6 +969,9 @@ html{touch-action:manipulation}
 #sheet2 #fSave{bottom:6px}
 #sheet2 #fEditBtns{margin-bottom:6px}
 .toast{z-index:95}
+
+/* ===== v31 · one colour, one meaning ===== */
+.gl-am,.gl-am.in{color:var(--quy)}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1681,7 +1684,7 @@ function ovHtml(){
   }
   // this month: budget ring + where the income went
   var ms = sums(monthEntries(y, m)), B = O.budget, p = B ? ms.chi / B : 0, thr = d.settings.threshold || .8, left = ms.thu - ms.chi - ms.quy;
-  var al = [[L('Chi tiêu', 'Spending'), ms.chi, 'var(--chi)'], [L('Tiết kiệm', 'Savings'), ms.quy, 'var(--quy)'], [L('Còn lại', 'Left'), Math.max(0, left), 'var(--thu)']];
+  var al = [[L('Chi tiêu', 'Spending'), ms.chi, 'var(--chi)'], [L('Tiết kiệm', 'Savings'), ms.quy, 'var(--quy)'], [L('Còn lại', 'Left'), Math.max(0, left), 'var(--ok)']];
   var base = Math.max(ms.thu, ms.chi + ms.quy + Math.max(0, left)) || 1;
   h += '<div class="card"><h3>' + L('Tháng ', 'Month ') + m + '</h3><div class="ovm-row">'
     + '<div class="ring" data-ov="spend">' + ringSvg(p, B ? bcol(p, thr) : 'var(--muted)') + '<div class="rc"><b class="num">' + (B ? Math.round(p * 100) + '%' : '–') + '</b><span>' + L('ngân sách', 'of budget') + '</span></div></div>'
@@ -1892,7 +1895,7 @@ function renderCal(){
   $('calSum').innerHTML = '<div><span>Thu nhập</span><b class="c-thu num"' + cu('c1', s.thu, 0, 1) + '>' + moneyS(s.thu) + '</b></div>'
     + '<div><span>Chi tiêu</span><b class="c-chi num"' + cu('c2', s.chi, 0, 1) + '>' + moneyS(s.chi) + '</b></div>'
     + '<div><span>Tiết kiệm</span><b class="c-quy num"' + cu('c3', s.quy, 0, 1) + '>' + moneyS(s.quy) + '</b></div>'
-    + '<div class="sumleft"><span>' + L('Còn lại thực tế', 'Left after savings') + '</span><b class="num ' + (tot < 0 ? 'c-neg' : 'c-thu') + '"' + cu('c4', tot, 0, 1) + '>' + moneyS(tot) + '</b></div>';
+    + '<div class="sumleft"><span>' + L('Còn lại thực tế', 'Left after savings') + '</span><b class="num ' + (tot < 0 ? 'c-neg' : 'c-ok') + '"' + cu('c4', tot, 0, 1) + '>' + moneyS(tot) + '</b></div>';
   var st = S.data.settings, open = 0;
   if (y === st.year) {
     var before = inRange(y + '-01-01', ym(y, m) + '-00'), b = sums(before);
@@ -1932,7 +1935,7 @@ function renderDayList(list, isSearch){
     var g = groups[k], s = sums(g), net = s.thu - s.chi, d = fromIso(k), off = dimOn && k !== S.pick ? ' off' : '';
     h += '<div class="dh' + off + '" id="day-' + k + '" data-d="' + k + '"><span>' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' (' + WD[d.getDay()] + ')</span><span class="num">' + money(net, null, true) + '</span></div>';
     g.forEach(function(e){
-      var t = typeOf(e), cls = t === 'Thu' ? 'c-thu' : t === 'Tiết kiệm' ? 'c-quy' : '';
+      var t = typeOf(e), cls = t === 'Thu' ? 'c-thu' : t === 'Tiết kiệm' ? 'c-quy' : 'c-chi';
       var other = e.cur !== S.disp ? '<small>≈ ' + money(conv(e.amount, e.cur)) + '</small>' : '';
       h += '<button class="it' + off + '" data-row="' + e.row + '" data-d="' + k + '">' + tile(e.cat) + '<div class="tx"><b>' + esc(e.cat) + '</b>'
         + (e.memo ? '<span>(' + esc(e.memo) + ')</span>' : '') + (e.pending ? '<span class="pend">⏳ chờ gửi</span>' : '') + '</div><div class="am num ' + cls + '">' + money(e.amount, e.cur) + other + '</div><span class="chev">›</span></button>';
@@ -1989,7 +1992,7 @@ function repDetailHtml(){
   var P = periodRange(), list = inRange(P.a, P.b), s = sums(list), net = s.thu - s.chi, open = openBal(P.a);
   var h = '<div class="boxes"><div class="bx"><span>Chi tiêu</span><b class="c-chi num"' + cu('r1', -s.chi) + '>' + money(-s.chi) + '</b></div>'
     + '<div class="bx"><span>Thu nhập</span><b class="c-thu num"' + cu('r2', s.thu, 1) + '>' + money(s.thu, null, true) + '</b></div>'
-    + '<div class="bx w"><span>Thu chi</span><b class="num ' + (net < 0 ? 'c-neg' : 'c-thu') + '"' + cu('r3', net, 1) + '>' + money(net, null, true) + '</b></div>';
+    + '<div class="bx w"><span>Thu chi</span><b class="num ' + (net < 0 ? 'c-neg' : 'c-ok') + '"' + cu('r3', net, 1) + '>' + money(net, null, true) + '</b></div>';
   if (open !== null) {
     var close = open + net - s.quy;
     h += '<div class="bx"><span>Tiền để tiêu đầu kì</span><b class="num ' + (open < 0 ? 'c-neg' : '') + '"' + cu('r4', open) + '>' + money(open) + '</b></div>'
@@ -2002,7 +2005,7 @@ function repDetailHtml(){
   return h;
 }
 function itemHtml(e, withDate){
-  var t = typeOf(e), cls = t === 'Thu' ? 'c-thu' : t === 'Tiết kiệm' ? 'c-quy' : '';
+  var t = typeOf(e), cls = t === 'Thu' ? 'c-thu' : t === 'Tiết kiệm' ? 'c-quy' : 'c-chi';
   var d = e.date.split('-'), sub = (withDate ? d[2] + '/' + d[1] : '') + (e.memo ? (withDate ? ' · ' : '') + e.memo : '');
   var other = e.cur !== S.disp ? '<small>≈ ' + money(conv(e.amount, e.cur)) + '</small>' : '';
   return '<button class="it" data-row="' + e.row + '">' + tile(e.cat) + '<div class="tx"><b>' + esc(withDate ? (e.memo || shortName(e.cat)) : e.cat) + '</b>'
@@ -2261,8 +2264,8 @@ function repTrend(P){
     + '<p class="sub"><b class="num">' + money(tc) + '</b> trong ' + rangeName + ' · ' + deltaPill(tc, tp, kind === 'Chi') + ' so với ' + rangeName + ' trước đó</p>'
     + '<div class="ctrls"><button class="chipbtn' + (S.cmp ? '' : ' off') + '" data-cmp="1">┄ Kỳ trước</button><div class="seg small" id="rRange">'
     + [['12m', '12T'], ['6m', '6T'], ['30d', '30N'], ['7d', '7N']].map(function(r){ return '<button data-rt="' + r[0] + '"' + (S.rt === r[0] ? ' class="on"' : '') + '>' + r[1] + '</button>'; }).join('') + '</div></div>'
-    + '<div class="chart">' + svgArea({labels:ts.labels, cur:ts.cur, prev:S.cmp ? ts.prev : null, color:kind === 'Chi' ? 'var(--accent)' : 'var(--thu)'}) + '</div>'
-    + '<div class="legend"><span><i style="background:' + (kind === 'Chi' ? 'var(--accent)' : 'var(--thu)') + '"></i>' + rangeName + ' này</span>' + (S.cmp ? '<span><i class="dash"></i>' + rangeName + ' trước đó</span>' : '') + '</div></div>';
+    + '<div class="chart">' + svgArea({labels:ts.labels, cur:ts.cur, prev:S.cmp ? ts.prev : null, color:kind === 'Chi' ? 'var(--chi)' : 'var(--thu)'}) + '</div>'
+    + '<div class="legend"><span><i style="background:' + (kind === 'Chi' ? 'var(--chi)' : 'var(--thu)') + '"></i>' + rangeName + ' này</span>' + (S.cmp ? '<span><i class="dash"></i>' + rangeName + ' trước đó</span>' : '') + '</div></div>';
   return out + repTrendOld(P);
 }
 function repTrendOld(P){
@@ -2282,7 +2285,7 @@ function repTrendOld(P){
   var avgT = act.length ? act.reduce(function(a, i){ return a + thu[i]; }, 0) / act.length : 0;
   h += '<div class="card"><h3>Trung bình mỗi tháng <small>' + act.length + ' tháng có dữ liệu</small></h3><div class="kv" style="margin-top:0">'
     + '<div><span>Chi tiêu</span><b class="c-chi num">' + money(avgC) + '</b></div><div><span>Thu nhập</span><b class="c-thu num">' + money(avgT) + '</b></div>'
-    + '<div><span>Còn lại</span><b class="num ' + (avgT - avgC < 0 ? 'c-neg' : '') + '">' + money(avgT - avgC) + '</b></div></div>'
+    + '<div><span>Còn lại</span><b class="num ' + (avgT - avgC < 0 ? 'c-neg' : 'c-ok') + '">' + money(avgT - avgC) + '</b></div></div>'
     + (best >= 0 ? '<div class="kv"><div style="grid-column:span 3"><span>Chi nhiều nhất: ' + labels[best] + '/' + keys[best].slice(0, 4) + ' · ít nhất: ' + labels[worst] + '/' + keys[worst].slice(0, 4) + '</span><b class="num">' + money(chi[best]) + ' · ' + money(chi[worst]) + '</b></div></div>' : '') + '</div>';
   var cur = byCat(inRange(P.a, P.b), 'Chi'), prev = byCat(inRange(P.pa, P.pb), 'Chi');
   var names = Object.keys(cur).concat(Object.keys(prev).filter(function(k){ return !(k in cur); }));
@@ -2387,7 +2390,7 @@ function renderBudget(){
   var isNow = S.data.settings.today.slice(0, 7) === ym(S.y, S.m);
   var h = (isNow ? alertsHtml(computeAlerts().filter(function(a){ return a.lv !== 'bill'; })) : '') + '<div class="card"><h3>Ngân sách tháng ' + S.m + '<small>' + (daysLeft ? 'còn ' + daysLeft + ' ngày' : 'đã kết thúc') + '</small></h3>'
     + '<div class="ringcard" style="margin-top:12px">' + ring + '<div class="kvl"><div><span>Đã chi</span><b class="num c-chi">' + money(ts) + '</b></div>'
-    + '<div><span>Còn lại</span><b class="num ' + (left < 0 ? 'c-neg' : '') + '">' + money(left) + '</b></div>'
+    + '<div><span>Còn lại</span><b class="num ' + (left < 0 ? 'c-neg' : !tb ? '' : p >= thr ? 'c-warn' : 'c-ok') + '">' + money(left) + '</b></div>'
     + '<div><span>Còn được chi/ngày</span><b class="num">' + (daysLeft && tb ? money(perDay) : '–') + '</b></div>'
     + '<div><span>Tháng trước</span><b class="num">' + money(lastM) + '</b></div></div></div>'
     + '<span class="statchip ' + st[0] + '"><i></i>' + st[1] + '</span>'
@@ -2869,8 +2872,8 @@ function paceDetail(){
   var h = '<h2 class="sh-title">' + L('Dự kiến chi cả tháng ', 'Projected spending for ') + P.m + '/' + P.y + '</h2>'
     + '<div class="sh-bal"><b class="num' + (over > 0 ? ' c-neg' : '') + '">' + money(P.proj) + '</b><span class="num">' + (over > 0 ? L('vượt ', 'over by ') + money(over) : L('dư ', 'under by ') + money(-over)) + L(' so với ngân sách ', ' vs the budget of ') + money(b) + '</span></div>'
     + '<div class="chart">' + svgChart({labels:labels, tl:labels.map(function(x){ return pad(+x) + '/' + pad(P.m); }),
-        lines:[{v:pace, c:'var(--muted)', dash:true, n:L('Ngân sách chia đều', 'Budget, even pace')}, {v:proj, c:'var(--warn)', dash:true, n:L('Dự kiến', 'Projected')}, {v:cum, c:'var(--chi)', n:L('Đã chi', 'Spent')}], h:180}) + '</div>'
-    + legend([[L('Đã chi cộng dồn', 'Spent, cumulative'), 'var(--chi)'], [L('Dự kiến', 'Projected'), 'var(--warn)'], [L('Ngân sách chia đều', 'Budget, even pace'), 'var(--muted)']])
+        lines:[{v:pace, c:'var(--muted)', dash:true, n:L('Ngân sách chia đều', 'Budget, even pace')}, {v:proj, c:'var(--ink)', dash:true, n:L('Dự kiến', 'Projected')}, {v:cum, c:'var(--chi)', n:L('Đã chi', 'Spent')}], h:180}) + '</div>'
+    + legend([[L('Đã chi cộng dồn', 'Spent, cumulative'), 'var(--chi)'], [L('Dự kiến', 'Projected'), 'var(--ink)'], [L('Ngân sách chia đều', 'Budget, even pace'), 'var(--muted)']])
     + '<div class="sh-sub">' + L('Cách tính', 'How it is worked out') + '</div><div class="dt-rows">'
     + dtRow(L('Chi cố định, tính một lần', 'Fixed costs, counted once') + (fixedTxt ? '<small>' + esc(fixedTxt) + '</small>' : ''), money(P.fixedExp))
     + dtRow(L('Chi thường ngày đến nay', 'Day-to-day spending so far') + '<small>' + P.dom + L(' ngày', ' days') + '</small>', money(P.vari))
@@ -2970,8 +2973,8 @@ function renderJars(){
   var avg6 = r6.length ? r6.reduce(function(a, b){ return a + b; }, 0) / r6.length : null, P = tgt > 0 ? tot / tgt : 0;
   var pct = function(v){ return v === null ? '–' : Math.round(v * 100) + '%'; };
   var h = '<div class="card"><h3>' + L('Tiết kiệm của bạn', 'Your savings') + '<small>' + jars.length + L(' hũ', jars.length === 1 ? ' jar' : ' jars') + '</small></h3>'
-    + '<div class="ringcard" style="margin-top:12px"><div class="ring">' + ringSvg(P, 'var(--ok)') + '<div class="rc"><b class="num">' + (tgt ? Math.round(P * 100) + '%' : '–') + '</b><span>' + L('của mục tiêu', 'of goal') + '</span></div></div>'
-    + '<div class="kvl"><div><span>' + L('Đã để dành', 'Saved') + '</span><b class="num c-thu"' + cu('jt', tot, 0, 1) + '>' + moneyS(tot) + '</b></div>'
+    + '<div class="ringcard" style="margin-top:12px"><div class="ring">' + ringSvg(P, 'var(--quy)') + '<div class="rc"><b class="num">' + (tgt ? Math.round(P * 100) + '%' : '–') + '</b><span>' + L('của mục tiêu', 'of goal') + '</span></div></div>'
+    + '<div class="kvl"><div><span>' + L('Đã để dành', 'Saved') + '</span><b class="num c-quy"' + cu('jt', tot, 0, 1) + '>' + moneyS(tot) + '</b></div>'
     + '<div><span>' + L('Tổng mục tiêu', 'Total goal') + '</span><b class="num">' + moneyS(tgt) + '</b></div>'
     + '<div><span>' + L('Tỷ lệ tiết kiệm tháng này', 'Savings rate this month') + '</span><b class="num">' + pct(r0) + '</b></div>'
     + '<div><span>' + L('Trung bình 6 tháng', '6-month average') + '</span><b class="num">' + pct(avg6) + '</b></div></div></div>'
@@ -2980,7 +2983,7 @@ function renderJars(){
   if (!jars.length) h += '<div class="card"><p class="note" style="margin:0 0 12px">' + L('Chưa có hũ nào. Tạo một hũ cho mỗi mục tiêu: quỹ khẩn cấp, du lịch, mua sắm lớn…', 'No jars yet. Create one per goal: emergency fund, travel, a big purchase…') + '</p>'
     + (d.goals.funds.length ? '<button class="btnsm" data-jact="import">' + L('Tạo từ Mục tiêu năm', 'Create from yearly goals') + '</button>' : '') + '</div>';
   h += '<div class="jars">' + jars.map(function(j, i){
-    var x = st[i], col = x.done ? 'var(--ok)' : x.behind ? 'var(--warn)' : 'var(--accent)';
+    var x = st[i], col = x.done ? 'var(--ok)' : x.behind ? 'var(--warn)' : 'var(--quy)';
     var sub = x.done ? L('Đã đạt mục tiêu 🎉', 'Goal reached 🎉') : j.due ? (x.mLeft <= 0 ? L('Đã quá hạn', 'Past the deadline') : L('Còn ', '') + Math.ceil(x.mLeft) + L(' tháng · cần ', ' months left · needs ') + moneyS(convTo(x.need, j.cur, S.disp)) + L('/tháng', '/month'))
       : (x.eta ? L('Với tốc độ hiện tại, đạt sau ~', 'At this pace, reached in ~') + Math.ceil(x.eta) + L(' tháng', ' months') : L('Chưa đặt hạn chót', 'No deadline'));
     return '<button class="jar" data-jar="' + j.id + '" style="--c:' + col + ';--i:' + i + '"><div class="jar-top"><span class="jar-ic">' + esc(j.icon || '🫙') + '</span><div class="jar-nm"><b>' + esc(j.name) + '</b><span>' + esc(sub) + '</span></div><span class="chev">›</span></div>'
@@ -2996,7 +2999,7 @@ function openJar(id){
   var kv = [[L('Hạn chót', 'Deadline'), j.due ? fmtD(j.due) : '–'], [L('Cần mỗi tháng', 'Needed / month'), x.need !== null && !x.done ? moneyS(convTo(x.need, j.cur, S.disp)) : '–'], [L('TB 3 tháng qua', 'Last 3 months avg'), moneyS(convTo(x.pace, j.cur, S.disp))]];
   var h = '<div class="sh-head"><span class="jar-ic big">' + esc(j.icon || '🫙') + '</span><div><h2>' + esc(j.name) + '</h2><p>' + esc(nm(j.cat)) + '</p></div></div>'
     + '<div class="sh-bal"><b class="num">' + money(convTo(x.bal, j.cur, S.disp)) + '</b><span class="num">' + L('trên ', 'of ') + money(convTo(j.target, j.cur, S.disp)) + ' · ' + Math.round(x.pct * 100) + '%</span></div>'
-    + '<div class="bar" style="height:10px"><div style="width:' + Math.min(100, x.pct * 100).toFixed(1) + '%;background:' + (x.done ? 'var(--ok)' : 'var(--accent)') + '"></div></div>'
+    + '<div class="bar" style="height:10px"><div style="width:' + Math.min(100, x.pct * 100).toFixed(1) + '%;background:' + (x.done ? 'var(--ok)' : 'var(--quy)') + '"></div></div>'
     + '<div class="kv">' + kv.map(function(q){ return '<div><span>' + q[0] + '</span><b class="num">' + q[1] + '</b></div>'; }).join('') + '</div>'
     + '<div class="row2"><button class="go" data-jact="in" data-id="' + j.id + '">＋ ' + L('Nạp tiền', 'Add money') + '</button><button data-jact="out" data-id="' + j.id + '">− ' + L('Rút tiền', 'Withdraw') + '</button></div>'
     + '<div id="jarMove"></div>'
@@ -3086,7 +3089,7 @@ function renderRecur(){
   else h += '<div class="glist">' + list.map(function(it){
     var st = recStatus(it);
     return '<button class="it" data-rec="' + it.id + '">' + tile(it.cat) + '<div class="tx"><b>' + esc(it.name) + '</b><span>' + L('Ngày ', 'Day ') + it.day + ' · ' + (it.mode === 'auto' ? L('Tự ghi', 'Auto') : L('Nhắc', 'Remind')) + '</span></div>'
-      + '<div class="am num ' + (cinfo(it.cat).type === 'Thu' ? 'c-thu' : '') + '">' + money(it.amount, it.cur) + '<small class="rs rs-' + st[0] + '">' + esc(st[1]) + '</small></div><span class="chev">›</span></button>';
+      + '<div class="am num ' + (cinfo(it.cat).type === 'Thu' ? 'c-thu' : cinfo(it.cat).type === 'Tiết kiệm' ? 'c-quy' : 'c-chi') + '">' + money(it.amount, it.cur) + '<small class="rs rs-' + st[0] + '">' + esc(st[1]) + '</small></div><span class="chev">›</span></button>';
   }).join('') + '</div>';
   h += '<button class="primary" data-ract="new">＋ ' + L('Thêm khoản định kỳ', 'Add recurring item') + '</button>';
   $('budBody').innerHTML = h;
