@@ -953,6 +953,11 @@ html{touch-action:manipulation}
 .card[data-goals] .gol:last-child{padding-bottom:0}
 .sheet .gol .bin{border-bottom:0;padding:10px 0 0}
 .sheet .gol .bin-n{font-size:13.5px;color:var(--muted)}
+
+/* ===== v29 · category rows slide open ===== */
+.rrow .chev{display:inline-block;transition:transform .35s var(--out3)}
+.rrow.open .chev{transform:rotate(90deg)}
+.dwrap{overflow:hidden}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1957,10 +1962,49 @@ function repCategory(list){
     var open = S.rc === r[0], col = colOf[r[0]] || OTHER_C;
     h += '<button class="rrow' + (open ? ' open' : '') + '" data-rc="' + esc(r[0]) + '" style="--c:' + col + '"><div class="ic" style="background:' + col + '33">' + icon(r[0]) + '</div>'
       + '<div class="nm"><span>' + esc(r[0]) + '</span><i class="shr"><b style="width:' + (top ? r[1] / top * 100 : 0).toFixed(1) + '%"></b></i></div>'
-      + '<div class="vv num">' + money(r[1]) + '<small>' + nf1.format(total ? r[1] / total * 100 : 0) + ' %</small></div><span class="chev">' + (open ? '⌄' : '›') + '</span></button>';
-    if (open) h += catDetail(r[0], list, col);
+      + '<div class="vv num">' + money(r[1]) + '<small>' + nf1.format(total ? r[1] / total * 100 : 0) + ' %</small></div><span class="chev">›</span></button>';
+    if (open) h += '<div class="dwrap">' + catDetail(r[0], list, col) + '</div>';
   });
   return h + '</div>';
+}
+/* ---------- category rows: open / close with a slide (transforms only) ---------- */
+var RCA = null;
+function rcSlide(wrap, open, done){
+  var det = wrap.firstElementChild, H = wrap.offsetHeight, stop = wrap.closest('.sheet') || document.body, fol = [];
+  for (var n = wrap; n && n !== stop; n = n.parentNode) for (var x = n.nextElementSibling; x; x = x.nextElementSibling) fol.push(x);
+  if (RM || !det || !det.animate || H < 2) { done(); return null; }
+  // the wrapper clips at its top edge (just under the row); the detail and everything below move together
+  var up = {transform:'translateY(' + (-H) + 'px)'}, home = {transform:'translateY(0)'};
+  var kf = open ? [up, home] : [home, up];
+  var opt = open ? {duration:frames(500), easing:'cubic-bezier(.32,.72,0,1)', fill:'both'} : {duration:frames(375), easing:'cubic-bezier(.4,0,.2,1)', fill:'both'};
+  var anims = [det.animate(kf, opt)];
+  fol.forEach(function(f){ anims.push(f.animate(kf, opt)); });
+  // end() can also be called early (a new tap): finish now, synchronously
+  var fin = false, end = function(){ if (fin) return; fin = true; done(); anims.forEach(function(a){ a.cancel(); }); };
+  anims[0].onfinish = end;
+  return {end:end};
+}
+function rcToggle(row){
+  if (RCA) { var run = RCA; RCA = null; run.end(); }
+  var card = row.parentNode, cat = row.getAttribute('data-rc'), sh = row.closest('.sheet');
+  var cur = card.querySelector('.rrow.open'), curW = cur && cur.nextElementSibling && cur.nextElementSibling.classList.contains('dwrap') ? cur.nextElementSibling : null;
+  var opening = cur !== row;
+  S.rc = opening ? cat : '';
+  var svg = card.querySelector('svg.dn'), dr = svg ? DNS[svg.getAttribute('data-dn')] || [] : [], si = null;
+  if (opening) for (var i = 0; i < dr.length; i++) if (dr[i].rows.indexOf(cat) >= 0) { si = i; break; }
+  if (svg) dnSelect(svg, si, true);
+  if (cur) cur.classList.remove('open');
+  if (!opening) { if (curW) RCA = rcSlide(curW, false, function(){ curW.remove(); RCA = null; }); return; }
+  if (curW) {
+    // another row was open: drop its detail at once and keep the tapped row where it is on screen
+    var y0 = row.getBoundingClientRect().top; curW.remove();
+    var dy = row.getBoundingClientRect().top - y0; if (dy && sh) sh.scrollTop += dy;
+  }
+  row.classList.add('open');
+  var P = periodRange(), list = inRange(P.a, P.b), col = row.style.getPropertyValue('--c') || OTHER_C;
+  var w = document.createElement('div'); w.className = 'dwrap'; w.innerHTML = catDetail(cat, list, col);
+  card.insertBefore(w, row.nextSibling);
+  RCA = rcSlide(w, true, function(){ RCA = null; });
 }
 function catDetail(cat, list, col){
   var items = list.filter(function(e){ return e.cat === cat; }).sort(function(a, b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : b.row - a.row; });
@@ -3219,7 +3263,7 @@ document.addEventListener('click', function(ev){
   if (b.closest('#rPeriod')) { if (S.rp !== ds.p) motion({anim:true, els:[['#repBody', 'a-up']]}); S.rp = ds.p; S.rc = ''; render(); return; }
   if (b.closest('#rKind')) { if (S.rk !== ds.k) motion({anim:true, els:[['#repPane', 'a-fade']]}); S.rk = ds.k; S.rc = ''; render(); return; }
   if (ds.ra) { var ri = RA.indexOf(S.ra), rn = RA.indexOf(ds.ra); if (ri !== rn) motion({anim:true, els:[['#repPane', rn > ri ? 'a-r' : 'a-l']]}); S.ra = ds.ra; S.rc = ''; render(); return; }
-  if (ds.rc !== undefined) { S.rc = S.rc === ds.rc ? '' : ds.rc; render(); var dt = document.querySelector('.detail'); if (dt && !RM) replay(dt, 'a-up'); return; }
+  if (ds.rc !== undefined) { rcToggle(b); return; }
   if (ds.cat !== undefined) { S.f.cat[S.f.type] = ds.cat; renderForm(); jelly(document.querySelector('#fCats .cat.on'), .8); return; }
   if (ds.how !== undefined) { S.f.how = S.f.how === ds.how ? '' : ds.how; renderForm(); jelly(document.querySelector('#fHow .chip.on')); return; }
   if (ds.addday) { addOnDay(ds.addday); return; }
