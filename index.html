@@ -632,15 +632,15 @@ a.primary{text-decoration:none}
 :root[data-bg="aurora"]{--cta-a:#14B8A6;--cta-b:#6366F1}
 :root[data-bg="sunset"]{--cta-a:#DB2777;--cta-b:#EA580C}
 :root[data-bg="ocean"]{--cta-a:#0891B2;--cta-b:#2563EB}
-#v-input #fSave{position:sticky;bottom:calc(102px + env(safe-area-inset-bottom));z-index:5;display:flex;align-items:center;justify-content:center;gap:9px;
+:is(#v-input,#sheet2) #fSave{position:sticky;bottom:calc(102px + env(safe-area-inset-bottom));z-index:5;display:flex;align-items:center;justify-content:center;gap:9px;
   width:auto;min-width:min(290px,calc(100% - 56px));max-width:calc(100% - 24px);margin:22px auto 8px;padding:14px 26px;font-size:15.5px;font-weight:800;letter-spacing:.01em;border-radius:999px;
   color:var(--ink);text-shadow:none;background:linear-gradient(172deg,var(--sheen) 0%,transparent 42%),var(--glass);border:1px solid var(--gborder);
   box-shadow:inset 0 1px 0 var(--ghi),0 16px 36px -10px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);
   transition:background .4s var(--ease),color .35s,box-shadow .4s,border-color .35s,transform .425s var(--spring)}
-#v-input #fSave::before{content:"";width:18px;height:18px;flex:none;background:currentColor;opacity:.75;-webkit-mask:var(--ico-plus) center/contain no-repeat;mask:var(--ico-plus) center/contain no-repeat;transition:opacity .3s}
-#v-input #fSave.ready{color:#fff;background:var(--cta);border-color:rgba(255,255,255,.3);box-shadow:var(--cta-shadow),0 0 0 4px color-mix(in srgb,var(--cta-a) 18%,transparent);text-shadow:0 1px 1px rgba(10,20,60,.28)}
-#v-input #fSave.ready::before{opacity:1;-webkit-mask-image:var(--ico-check);mask-image:var(--ico-check)}
-#v-input #fSave[disabled]{opacity:.7}
+:is(#v-input,#sheet2) #fSave::before{content:"";width:18px;height:18px;flex:none;background:currentColor;opacity:.75;-webkit-mask:var(--ico-plus) center/contain no-repeat;mask:var(--ico-plus) center/contain no-repeat;transition:opacity .3s}
+:is(#v-input,#sheet2) #fSave.ready{color:#fff;background:var(--cta);border-color:rgba(255,255,255,.3);box-shadow:var(--cta-shadow),0 0 0 4px color-mix(in srgb,var(--cta-a) 18%,transparent);text-shadow:0 1px 1px rgba(10,20,60,.28)}
+:is(#v-input,#sheet2) #fSave.ready::before{opacity:1;-webkit-mask-image:var(--ico-check);mask-image:var(--ico-check)}
+:is(#v-input,#sheet2) #fSave[disabled]{opacity:.7}
 
 /* ===== v7 · add for a calendar day ===== */
 html{touch-action:manipulation}
@@ -958,6 +958,17 @@ html{touch-action:manipulation}
 .rrow .chev{display:inline-block;transition:transform .35s var(--out3)}
 .rrow.open .chev{transform:rotate(90deg)}
 .dwrap{overflow:hidden}
+
+/* ===== v30 · edit a transaction in a slide-up sheet ===== */
+#sheet2{z-index:85}
+#sheet2 .sheet{max-height:84vh}
+#sheet2 #fDateLbl{white-space:nowrap;font-size:15px}
+#sheet2 .sh-title{margin-bottom:10px}
+#sheet2 #fType{margin:0 0 12px}
+#sheet2 .form{margin-left:0;margin-right:0}
+#sheet2 #fSave{bottom:6px}
+#sheet2 #fEditBtns{margin-bottom:6px}
+.toast{z-index:95}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -1050,6 +1061,7 @@ html{touch-action:manipulation}
   <button data-v="more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>Khác</button>
 </nav>
 <div class="sheet-wrap" id="sheet" hidden><div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"><i class="grab"></i><div id="sheetBody"></div></div></div>
+<div class="sheet-wrap" id="sheet2" hidden><div class="scrim"></div><div class="sheet" role="dialog" aria-modal="true"><i class="grab"></i><h2 class="sh-title" id="sheet2Title">Sửa khoản</h2><div id="sheet2Body"></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1318,7 +1330,7 @@ function goView(v, btn){
   catEditOff();
   if (v !== S.view) S.pick = '';
   if (SWITCHING || !v) return;
-  if (S.edit) resetForm();
+  if (S.edit) { editAbort(); resetForm(); }
   if (v === S.view) { render(); window.scrollTo({top:0, behavior:RM ? 'auto' : 'smooth'}); return; }
   var cur = $('v-' + S.view), oi = VORDER.indexOf(S.view), ni = VORDER.indexOf(v);
   setOn('#tabbar button', 'v', v); syncThumbs(true); popIcon(btn);
@@ -1577,7 +1589,7 @@ function setOn(sel, attr, val){ [].forEach.call(document.querySelectorAll(sel), 
 
 /* ================= render ================= */
 function render(){
-  $('title').textContent = S.edit ? 'Sửa khoản' : TITLES[S.view];
+  $('title').textContent = TITLES[S.view];
   var rep = false;
   $('title').hidden = rep; $('rPeriod').hidden = !rep; setOn('#rPeriod button', 'p', S.rp);
   $('curLbl').textContent = S.disp;
@@ -1589,7 +1601,7 @@ function render(){
   $('repLbl').innerHTML = S.rp === 'm' ? lbl : '<b>' + S.y + '</b><span>(01/01 – 31/12)</span>';
   document.querySelector('#v-report .mnav').hidden = true;
   $('rBack').hidden = true;
-  if (S.view === 'input') renderForm();
+  if (S.view === 'input' || S.edit) renderForm();
   if (S.view === 'cal') renderCal();
   if (S.view === 'report') renderReport();
   if (S.view === 'budget') renderBudget();
@@ -1750,15 +1762,75 @@ function resetForm(keepDate){
   if (!keepDate) S.f.date = S.data.settings.today;
 }
 function startEdit(e){
-  closeSheet();
-  S.back = S.view === 'input' ? 'cal' : S.view;
   S.edit = e;
   var t = typeOf(e);
   S.f.type = t; S.f.cur = e.cur; S.f.cat[t] = e.cat; S.f.how = e.how || ''; S.f.date = e.date;
   $('fAmount').value = e.cur === 'VNĐ' ? nf0.format(e.amount) : (LANG === 'en' ? String(e.amount) : String(e.amount).replace('.', ','));
   $('fMemo').value = e.memo || ''; $('fNote').value = e.note || '';
-  S.view = 'input'; render(); window.scrollTo(0, 0);
+  editOpen();
 }
+/* ---------- edit sheet (#sheet2): the Nhập vào form, moved in while editing ---------- */
+var ED = {nodes:null, anim:null, pre:null};
+function edStop(){
+  if (ED.anim) { ED.anim.forEach(function(a){ a.onfinish = null; a.cancel(); }); ED.anim = null; }
+  ED.pre = null;
+  var w = $('sheet2'); w.querySelector('.sheet').style.transform = ''; w.querySelector('.scrim').style.opacity = '';
+}
+function edRestore(){
+  if (!ED.nodes) return;
+  var v = $('v-input'); ED.nodes.forEach(function(n){ v.appendChild(n); }); ED.nodes = null;
+}
+function editOpen(){
+  var w = $('sheet2'), sh = w.querySelector('.sheet'), sc = w.querySelector('.scrim'), body = $('sheet2Body');
+  edStop();
+  if (!ED.nodes) {
+    ED.nodes = [].slice.call($('v-input').children).filter(function(n){ return n.id !== 'hello' && n.id !== 'alerts'; });
+    ED.nodes.forEach(function(n){ body.appendChild(n); });
+  }
+  catEditOff();
+  $('sheet2Title').textContent = L('Sửa khoản', 'Edit entry');
+  renderForm();
+  w.hidden = false; document.documentElement.classList.add('sheet-open'); sh.scrollTop = 0;
+  if (RM || !sh.animate) return;
+  // hold it below the screen while the form is laid out and painted, then slide on a quiet frame
+  sh.style.transform = 'translateY(100%)'; sc.style.opacity = 0;
+  var tok = ED.pre = {};
+  var go = function(){
+    if (ED.pre !== tok) return;
+    ED.pre = null; sh.style.transform = ''; sc.style.opacity = '';
+    var a = sh.animate([{transform:'translateY(100%)'}, {transform:'translateY(0)'}], {duration:SHEET_IN.duration, easing:SHEET_IN.easing});
+    var b = sc.animate([{opacity:0}, {opacity:1}], {duration:frames(SHEET_IN.duration * .8), easing:'cubic-bezier(.25,.1,.25,1)'});
+    ED.anim = [a, b]; a.onfinish = function(){ ED.anim = null; };
+  };
+  requestAnimationFrame(function(){ requestAnimationFrame(go); });
+  setTimeout(go, 300);
+}
+function editClose(after, instant){
+  var w = $('sheet2'), sh = w.querySelector('.sheet'), sc = w.querySelector('.scrim');
+  var done = function(){
+    w.hidden = true; edRestore();
+    if ($('sheet').hidden) document.documentElement.classList.remove('sheet-open');
+    if (after) after();
+  };
+  if (w.hidden) { edStop(); done(); return; }
+  var from = getComputedStyle(sh).transform; from = from && from !== 'none' ? from : 'translateY(0)';
+  var fo = +getComputedStyle(sc).opacity; if (isNaN(fo)) fo = 1;
+  edStop();
+  if (instant || RM || !sh.animate) { done(); return; }
+  var a = sh.animate([{transform:from}, {transform:'translateY(100%)'}], {duration:SHEET_OUT.duration, easing:SHEET_OUT.easing, fill:'forwards'});
+  var b = sc.animate([{opacity:fo}, {opacity:0}], {duration:SHEET_OUT.duration, easing:SHEET_OUT.easing, fill:'forwards'});
+  ED.anim = [a, b];
+  a.onfinish = function(){ ED.anim = null; done(); a.cancel(); b.cancel(); };
+}
+// after a change: slide the form away, then reset it; a non-report sheet underneath would be stale, so it closes too
+function editDone(){
+  editClose(function(){
+    resetForm(); renderFormButton();
+    if (!$('sheet').hidden && !$('sheetBody').querySelector('.rxs')) closeSheet();
+  });
+}
+function editCancel(){ editClose(function(){ resetForm(); renderFormButton(); }); }
+function editAbort(){ if (S.edit || ED.nodes) editClose(null, true); }
 function save(){
   var f = S.f, amount = parseAmount($('fAmount').value, f.cur), cat = f.cat[f.type];
   if (!(amount > 0)) { toast('Nhập số tiền'); shake($('fAmount').closest('.frow')); $('fAmount').focus(); return; }
@@ -1777,21 +1849,21 @@ function save(){
   if (editing && !navigator.onLine) { toast('Cần có mạng để sửa khoản đã lưu'); btn.disabled = false; renderFormButton(); return; }
   var p = editing ? call('updateEntry', editing.row, e, {date:editing.date, cat:editing.cat, amount:editing.amount}) : call('addEntry', e);
   p.then(function(row){
-    if (editing) { Object.assign(editing, e); toast('Đã lưu thay đổi'); resetForm(); S.view = S.back; }
+    if (editing) { Object.assign(editing, e); toast('Đã lưu thay đổi'); editDone(); }
     else { e.row = row; S.data.entries.push(e); toast('Đã nhập ' + money(amount, f.cur) + ' · ' + cat); resetForm(true); }
     var d = e.date.split('-'); S.y = +d[0]; S.m = +d[1];
     render();
   }).catch(function(err){ if (!editing && isNetErr(err)) queueIt(); else toast(err.message || 'Lỗi khi lưu'); })
     .then(function(){ btn.disabled = false; renderFormButton(); });
 }
-function renderFormButton(){ if (S.view === 'input') renderForm(); }
+function renderFormButton(){ if (S.view === 'input' || S.edit) renderForm(); }
 function del(){
   var b = $('fDelete');
   if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = 'Bấm lần nữa để xoá'; setTimeout(function(){ b.classList.remove('arm'); b.textContent = 'Xoá khoản này'; }, 3500); return; }
   var e = S.edit; if (!e) return;
   b.disabled = true;
   call('deleteEntry', e.row, {date:e.date, cat:e.cat, amount:e.amount}).then(function(){
-    toast('Đã xoá'); resetForm(); S.view = S.back; return reload(true);
+    toast('Đã xoá'); editDone(); return reload(true);
   }).catch(function(err){ toast(err.message || 'Lỗi khi xoá'); })
     .then(function(){ b.disabled = false; b.classList.remove('arm'); b.textContent = 'Xoá khoản này'; });
 }
@@ -3081,7 +3153,7 @@ function focusDay(dk){
   window.scrollTo({top:Math.max(0, Math.min(max, y)), behavior:RM ? 'auto' : 'smooth'});
 }
 function addOnDay(day){
-  if (S.edit) resetForm(true);
+  if (S.edit) { editAbort(); resetForm(true); }
   S.f.date = day;
   goView('input', document.querySelector('#tabbar [data-v="input"]'));
   setTimeout(function(){ var a = $('fAmount'); if (a) a.scrollIntoView({block:'center', behavior:RM ? 'auto' : 'smooth'}); }, 380);
@@ -3197,7 +3269,8 @@ function navMonth(n){
 }
 document.addEventListener('click', function(ev){
   var tg = ev.target, sl = tg.closest && tg.closest('.dn .sl');
-  if (tg.closest && tg.closest('.scrim')) { closeSheet(); return; }
+  var scr = tg.closest && tg.closest('.scrim');
+  if (scr) { if (scr.closest('#sheet2')) editCancel(); else closeSheet(); return; }
   if (sl) { dnSelect(sl.closest('svg'), +sl.getAttribute('data-sl')); return; }
   if (tg.closest && tg.closest('svg.dn')) { dnSelect(tg.closest('svg.dn'), null); return; }
   if (tg.closest && tg.closest('#dayList .off')) { S.pick = ''; render(); return; }
@@ -3286,7 +3359,7 @@ document.addEventListener('click', function(ev){
     case 'btnSearch': var sb = $('searchBar'); sb.classList.toggle('on'); if (sb.classList.contains('on')) $('q').focus(); else { S.q = ''; $('q').value = ''; render(); } break;
     case 'dPrev': case 'dNext': var d = fromIso(S.f.date); d.setDate(d.getDate() + (b.id === 'dPrev' ? -1 : 1)); S.f.date = iso(d); renderForm(); break;
     case 'fSave': save(); break;
-    case 'fCancel': resetForm(); S.view = S.back; render(); break;
+    case 'fCancel': editCancel(); break;
     case 'fDelete': del(); break;
     case 'mReload': reload(); break;
     case 'cGo': connectWith($('cCode').value); break;
